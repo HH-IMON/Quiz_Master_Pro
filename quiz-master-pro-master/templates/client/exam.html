@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Take Exam - Quiz Master Pro</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Outfit:wght@700;800;900&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/css/game.css">
+</head>
+
+<body>
+    <div class="animated-bg"></div>
+    <div class="particles"></div>
+
+    <div class="game-container" id="exam-container">
+        <!-- Loading State -->
+        <div id="loading-state" class="text-center">
+            <div class="glass-card" style="max-width: 500px; margin: 100px auto;">
+                <div style="font-size: 4rem; margin-bottom: var(--spacing-lg);">📝</div>
+                <h2>Loading Exam...</h2>
+                <p class="opacity-75 mt-md">Please wait while we prepare your exam.</p>
+            </div>
+        </div>
+
+        <!-- Exam Info (Before Start) -->
+        <div id="exam-info" class="hidden">
+            <div class="glass-card text-center" style="max-width: 600px; margin: 50px auto;">
+                <h1 class="gradient-text mb-lg" id="exam-title-display">Exam</h1>
+                <p class="opacity-75 mb-xl" id="exam-desc-display"></p>
+
+                <div class="grid grid-3 mb-xl" style="gap: var(--spacing-lg);">
+                    <div class="stat-card">
+                        <div class="stat-value" id="info-questions">0</div>
+                        <div class="stat-label">Questions</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="info-duration">0</div>
+                        <div class="stat-label">Minutes</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="info-points">0</div>
+                        <div class="stat-label">Total Points</div>
+                    </div>
+                </div>
+
+                <div class="alert alert-warning mb-xl">
+                    <span>⚠️</span>
+                    <span>Once you start, the timer will begin. Make sure you have enough time to complete the
+                        exam.</span>
+                </div>
+
+                <button class="btn btn-primary btn-lg" onclick="beginExam()">
+                    Start Exam 📝
+                </button>
+
+                <a href="/client/exams" class="btn btn-glass mt-lg">← Back to Exams</a>
+            </div>
+        </div>
+
+        <!-- Exam In Progress -->
+        <div id="exam-progress" class="hidden">
+            <!-- Header -->
+            <div class="game-header glass mb-xl">
+                <div class="question-progress">
+                    <span class="question-number" id="question-indicator">Question 1 of 10</span>
+                </div>
+                <div class="flex items-center gap-lg">
+                    <span class="badge badge-warning" id="time-remaining">⏱️ 60:00</span>
+                    <div class="question-timer">
+                        <div class="timer-circle" id="timer-circle">
+                            <span class="timer-value" id="timer-value">60</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Question Display -->
+            <div class="question-container" id="question-display">
+                <!-- Question content will be rendered here -->
+            </div>
+
+            <!-- Navigation -->
+            <div class="flex justify-between items-center mt-xl"
+                style="max-width: 1000px; margin: var(--spacing-xl) auto 0;">
+                <button class="btn btn-glass" id="prev-btn" onclick="prevQuestion()" disabled>← Previous</button>
+                <div class="flex gap-sm" id="question-dots"></div>
+                <button class="btn btn-primary" id="next-btn" onclick="nextQuestion()">Next →</button>
+            </div>
+
+            <!-- Submit Button (shown on last question) -->
+            <div class="text-center mt-xl hidden" id="submit-section">
+                <button class="btn btn-success btn-lg" onclick="confirmSubmit()">
+                    Submit Exam ✓
+                </button>
+            </div>
+        </div>
+
+        <!-- Results -->
+        <div id="exam-results" class="hidden">
+            <div class="results-container">
+                <div class="trophy-icon">📝</div>
+                <h1 class="results-title gradient-text">Exam Submitted!</h1>
+                <p class="results-subtitle opacity-75">Your answers have been recorded.</p>
+
+                <div class="glass-card mt-xl" id="results-display">
+                    <!-- Results will be shown here if enabled -->
+                </div>
+
+                <div class="mt-xl">
+                    <a href="/client/exams" class="btn btn-primary btn-lg">Back to Exams</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast-container" class="toast-container"></div>
+
+    <script src="/static/js/app.js"></script>
+    <script src="/static/js/auth.js"></script>
+    <script>
+        const EXAM_ID = {{ exam_id }};
+
+        let examState = {
+            exam: null,
+            questions: [],
+            currentQuestion: 0,
+            answers: {},
+            startTime: null,
+            timeLimit: 0,
+            timeRemaining: 0
+        };
+
+        let timerInterval = null;
+
+        async function init() {
+            const user = await getCurrentUser();
+            if (!user) {
+                window.location.href = '/client/login';
+                return;
+            }
+
+            await loadExamInfo();
+        }
+
+        async function loadExamInfo() {
+            try {
+                // First, try to start/resume the exam to get questions
+                const result = await api.post(`/exam/start/${EXAM_ID}`);
+
+                if (result.success) {
+                    examState.exam = result.exam;
+                    examState.questions = result.questions;
+                    examState.startTime = new Date(result.started_at);
+                    examState.timeLimit = result.exam.duration_minutes * 60; // Convert to seconds
+
+                    // Calculate remaining time
+                    const elapsed = Math.floor((new Date() - examState.startTime) / 1000);
+                    examState.timeRemaining = Math.max(0, examState.timeLimit - elapsed);
+
+                    document.getElementById('loading-state').classList.add('hidden');
+
+                    if (examState.timeRemaining <= 0) {
+                        // Time expired, auto-submit
+                        submitExam(true);
+                    } else {
+                        showExamInfo();
+                    }
+                } else {
+                    showToast(result.message || 'Failed to load exam', 'error');
+                    setTimeout(() => {
+                        window.location.href = '/client/exams';
+                    }, 2000);
+                }
+            } catch (error) {
+                showToast(error.message || 'Failed to load exam', 'error');
+            }
+        }
+
+        function showExamInfo() {
+            document.getElementById('exam-info').classList.remove('hidden');
+            document.getElementById('exam-title-display').textContent = examState.exam.title;
+            document.getElementById('info-questions').textContent = examState.questions.length;
+            document.getElementById('info-duration').textContent = examState.exam.duration_minutes;
+
+            let totalPoints = 0;
+            examState.questions.forEach(q => totalPoints += q.points || 10);
+            document.getElementById('info-points').textContent = totalPoints;
+        }
+
+        function beginExam() {
+            document.getElementById('exam-info').classList.add('hidden');
+            document.getElementById('exam-progress').classList.remove('hidden');
+
+            renderQuestionDots();
+            showQuestion();
+            startTimer();
+        }
+
+        function renderQuestionDots() {
+            const container = document.getElementById('question-dots');
+            container.innerHTML = examState.questions.map((_, i) => `
+                <div class="progress-dot ${i === 0 ? 'current' : ''}" 
+                     data-index="${i}" 
+                     onclick="goToQuestion(${i})"
+                     style="cursor: pointer;"></div>
+            `).join('');
+        }
+
+        function updateQuestionDots() {
+            const dots = document.querySelectorAll('.progress-dot');
+            dots.forEach((dot, i) => {
+                dot.classList.remove('current', 'answered');
+                if (i === examState.currentQuestion) {
+                    dot.classList.add('current');
+                }
+                if (examState.answers[examState.questions[i].id]) {
+                    dot.classList.add('answered');
+                    dot.style.background = 'var(--success)';
+                }
+            });
+        }
+
+        function showQuestion() {
+            const question = examState.questions[examState.currentQuestion];
+            const container = document.getElementById('question-display');
+
+            document.getElementById('question-indicator').textContent =
+                `Question ${examState.currentQuestion + 1} of ${examState.questions.length}`;
+
+            let answersHtml = '';
+            const savedAnswer = examState.answers[question.id] || '';
+
+            if (question.type === 'mcq') {
+                const options = typeof question.options === 'string'
+                    ? JSON.parse(question.options)
+                    : question.options;
+
+                answersHtml = `
+                    <div class="answers-grid">
+                        ${options.map((opt, i) => `
+                            <button class="answer-option ${savedAnswer === opt ? 'selected' : ''}" 
+                                    data-answer="${escapeHtml(opt)}" 
+                                    onclick="selectAnswer(this)">
+                                ${escapeHtml(opt)}
+                            </button>
+                        `).join('')}
+                    </div>
+                `;
+            } else if (question.type === 'truefalse') {
+                answersHtml = `
+                    <div class="tf-options">
+                        <button class="answer-option tf-option ${savedAnswer === 'true' ? 'selected' : ''}" 
+                                data-answer="true" onclick="selectAnswer(this)">
+                            ✓ True
+                        </button>
+                        <button class="answer-option tf-option ${savedAnswer === 'false' ? 'selected' : ''}" 
+                                data-answer="false" onclick="selectAnswer(this)">
+                            ✕ False
+                        </button>
+                    </div>
+                `;
+            } else {
+                answersHtml = `
+                    <div class="short-answer-container">
+                        <input type="text" class="form-input short-answer-input" 
+                               id="short-answer" 
+                               value="${escapeHtml(savedAnswer)}"
+                               placeholder="Type your answer..."
+                               oninput="saveShortAnswer(this.value)">
+                    </div>
+                `;
+            }
+
+            container.innerHTML = `
+                <div class="question-card">
+                    <span class="question-type-badge">${question.type.toUpperCase()}</span>
+                    <p class="question-text">${escapeHtml(question.question_text)}</p>
+                </div>
+                ${answersHtml}
+            `;
+
+            // Update navigation buttons
+            document.getElementById('prev-btn').disabled = examState.currentQuestion === 0;
+
+            const isLast = examState.currentQuestion === examState.questions.length - 1;
+            document.getElementById('next-btn').textContent = isLast ? 'Review' : 'Next →';
+            document.getElementById('submit-section').classList.toggle('hidden', !isLast);
+
+            updateQuestionDots();
+        }
+
+        function selectAnswer(button) {
+            const question = examState.questions[examState.currentQuestion];
+            const answer = button.dataset.answer;
+
+            // Remove selected from all options
+            document.querySelectorAll('.answer-option').forEach(opt => {
+                opt.classList.remove('selected');
+            });
+
+            // Add selected to clicked
+            button.classList.add('selected');
+
+            // Save answer
+            examState.answers[question.id] = answer;
+            updateQuestionDots();
+        }
+
+        function saveShortAnswer(value) {
+            const question = examState.questions[examState.currentQuestion];
+            examState.answers[question.id] = value;
+            updateQuestionDots();
+        }
+
+        function prevQuestion() {
+            if (examState.currentQuestion > 0) {
+                examState.currentQuestion--;
+                showQuestion();
+            }
+        }
+
+        function nextQuestion() {
+            if (examState.currentQuestion < examState.questions.length - 1) {
+                examState.currentQuestion++;
+                showQuestion();
+            }
+        }
+
+        function goToQuestion(index) {
+            examState.currentQuestion = index;
+            showQuestion();
+        }
+
+        function startTimer() {
+            updateTimerDisplay();
+
+            timerInterval = setInterval(() => {
+                examState.timeRemaining--;
+                updateTimerDisplay();
+
+                if (examState.timeRemaining <= 0) {
+                    clearInterval(timerInterval);
+                    showToast('Time is up! Submitting your exam...', 'warning');
+                    submitExam(true);
+                }
+            }, 1000);
+        }
+
+        function updateTimerDisplay() {
+            const minutes = Math.floor(examState.timeRemaining / 60);
+            const seconds = examState.timeRemaining % 60;
+
+            document.getElementById('time-remaining').textContent =
+                `⏱️ ${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+
+            document.getElementById('timer-value').textContent = minutes;
+
+            // Update timer circle color based on time
+            const timerEl = document.getElementById('timer-value');
+            timerEl.classList.remove('timer-warning', 'timer-critical');
+
+            if (examState.timeRemaining <= 60) {
+                timerEl.classList.add('timer-critical');
+            } else if (examState.timeRemaining <= 300) {
+                timerEl.classList.add('timer-warning');
+            }
+        }
+
+        function confirmSubmit() {
+            const answered = Object.keys(examState.answers).length;
+            const total = examState.questions.length;
+
+            if (answered < total) {
+                if (!confirm(`You have answered ${answered} of ${total} questions. Are you sure you want to submit?`)) {
+                    return;
+                }
+            } else {
+                if (!confirm('Are you sure you want to submit your exam?')) {
+                    return;
+                }
+            }
+
+            submitExam();
+        }
+
+        async function submitExam(autoSubmit = false) {
+            clearInterval(timerInterval);
+
+            try {
+                const result = await api.post('/exam/submit', {
+                    exam_id: EXAM_ID,
+                    answers: examState.answers
+                });
+
+                if (result.success) {
+                    showResults(result);
+                } else {
+                    showToast(result.message || 'Failed to submit exam', 'error');
+                }
+            } catch (error) {
+                showToast(error.message || 'Failed to submit exam', 'error');
+            }
+        }
+
+        function showResults(result) {
+            document.getElementById('exam-progress').classList.add('hidden');
+            document.getElementById('exam-results').classList.remove('hidden');
+
+            const container = document.getElementById('results-display');
+
+            if (result.score !== undefined) {
+                const percentage = result.percentage || 0;
+                const passed = percentage >= 50;
+
+                container.innerHTML = `
+                    <div class="text-center">
+                        <div style="font-size: 4rem; margin-bottom: var(--spacing-lg);">
+                            ${passed ? '🎉' : '📚'}
+                        </div>
+                        <h2 class="${passed ? 'gradient-text' : ''}">
+                            ${passed ? 'Congratulations!' : 'Keep Learning!'}
+                        </h2>
+                        
+                        <div class="grid grid-3 mt-xl" style="gap: var(--spacing-lg);">
+                            <div class="stat-card">
+                                <div class="stat-value">${result.score}</div>
+                                <div class="stat-label">Score</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value">${result.correct_answers}/${result.total_questions}</div>
+                                <div class="stat-label">Correct</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value">${percentage}%</div>
+                                <div class="stat-label">Percentage</div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-xl">
+                            <span class="badge ${passed ? 'badge-success' : 'badge-danger'}" style="font-size: 1.25rem; padding: var(--spacing-md) var(--spacing-xl);">
+                                ${passed ? '✓ PASSED' : '✕ FAILED'}
+                            </span>
+                        </div>
+                    </div>
+                `;
+            } else {
+                container.innerHTML = `
+                    <div class="text-center">
+                        <div style="font-size: 4rem; margin-bottom: var(--spacing-lg);">✓</div>
+                        <h2>Exam Submitted Successfully</h2>
+                        <p class="opacity-75 mt-md">Your results will be available once your teacher releases them.</p>
+                    </div>
+                `;
+            }
+
+            showConfetti();
+        }
+
+        // Prevent leaving page during exam
+        window.addEventListener('beforeunload', (e) => {
+            if (examState.questions.length > 0 && !document.getElementById('exam-results').classList.contains('hidden') === false) {
+                e.preventDefault();
+                e.returnValue = '';
+            }
+        });
+
+        init();
+    </script>
+</body>
+
+</html>

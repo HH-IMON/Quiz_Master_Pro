@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Practice Mode - Quiz Master Pro</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Outfit:wght@700;800;900&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/css/game.css">
+</head>
+
+<body>
+    <div class="animated-bg"></div>
+    <div class="particles"></div>
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <a href="/client/home" class="sidebar-brand">
+            <span>🧠</span>
+            <span>Quiz Master Pro</span>
+        </a>
+
+        <nav>
+            <ul class="sidebar-nav">
+                <li class="sidebar-nav-item">
+                    <a href="/client/home" class="sidebar-nav-link">
+                        <span class="icon">🏠</span>
+                        <span>Home</span>
+                    </a>
+                </li>
+                <li class="sidebar-nav-item">
+                    <a href="/client/game" class="sidebar-nav-link">
+                        <span class="icon">🎮</span>
+                        <span>Join Game</span>
+                    </a>
+                </li>
+                <li class="sidebar-nav-item">
+                    <a href="/client/practice" class="sidebar-nav-link active">
+                        <span class="icon">📚</span>
+                        <span>Practice</span>
+                    </a>
+                </li>
+                <li class="sidebar-nav-item">
+                    <a href="/client/battle" class="sidebar-nav-link">
+                        <span class="icon">⚔️</span>
+                        <span>Battle Mode</span>
+                    </a>
+                </li>
+                <li class="sidebar-nav-item">
+                    <a href="/client/chat" class="sidebar-nav-link">
+                        <span class="icon">💬</span>
+                        <span>Chat</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+
+        <div style="margin-top: auto; padding-top: var(--spacing-xl);">
+            <button class="btn btn-glass w-full logout-btn">🚪 Logout</button>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div id="practice-container">
+            <!-- Category Selection -->
+            <div id="category-selection">
+                <header class="mb-xl">
+                    <h1 class="gradient-text">📚 Practice Mode</h1>
+                    <p class="opacity-75">Learn at your own pace with instant feedback</p>
+                </header>
+
+                <div class="grid grid-4" id="categories-grid">
+                    <!-- Categories loaded dynamically -->
+                </div>
+            </div>
+
+            <!-- Practice Session -->
+            <div id="practice-session" class="hidden">
+                <!-- Question display -->
+            </div>
+        </div>
+    </main>
+
+    <div id="toast-container" class="toast-container"></div>
+
+    <script src="/static/js/app.js"></script>
+    <script src="/static/js/auth.js"></script>
+    <script>
+        let practiceState = {
+            categoryId: null,
+            questions: [],
+            currentIndex: 0,
+            correct: 0,
+            attempted: 0
+        };
+
+        async function init() {
+            await getCurrentUser();
+            loadCategories();
+
+            // Check URL for category
+            const params = new URLSearchParams(window.location.search);
+            const categoryId = params.get('category');
+            if (categoryId) {
+                startPractice(parseInt(categoryId));
+            }
+        }
+
+        async function loadCategories() {
+            try {
+                const result = await api.get('/practice/categories');
+                const grid = document.getElementById('categories-grid');
+
+                grid.innerHTML = result.categories.map(cat => `
+                    <div class="glass-card cursor-pointer" onclick="startPractice(${cat.id})" 
+                         style="padding: var(--spacing-xl); text-align: center;">
+                        <div style="font-size: 3rem; margin-bottom: var(--spacing-md);">${cat.icon}</div>
+                        <h4>${escapeHtml(cat.name)}</h4>
+                        <p class="opacity-75 mt-sm">${cat.total_questions || 0} questions</p>
+                        
+                        ${cat.questions_attempted > 0 ? `
+                            <div class="mt-lg">
+                                <div class="progress" style="height: 6px;">
+                                    <div class="progress-bar ${cat.accuracy >= 70 ? 'success' : cat.accuracy >= 40 ? 'warning' : 'danger'}" 
+                                         style="width: ${cat.accuracy}%"></div>
+                                </div>
+                                <div class="flex justify-between mt-sm" style="font-size: 0.75rem;">
+                                    <span>${cat.questions_attempted} attempted</span>
+                                    <span>${cat.accuracy}% accuracy</span>
+                                </div>
+                            </div>
+                        ` : `
+                            <span class="badge badge-glass mt-lg">New</span>
+                        `}
+                    </div>
+                `).join('');
+            } catch (error) {
+                showToast('Failed to load categories', 'error');
+            }
+        }
+
+        async function startPractice(categoryId) {
+            practiceState.categoryId = categoryId;
+            practiceState.currentIndex = 0;
+            practiceState.correct = 0;
+            practiceState.attempted = 0;
+
+            try {
+                const result = await api.get(`/practice/questions/${categoryId}?limit=10`);
+                practiceState.questions = result.questions;
+
+                if (practiceState.questions.length === 0) {
+                    showToast('No questions available in this category', 'warning');
+                    return;
+                }
+
+                document.getElementById('category-selection').classList.add('hidden');
+                document.getElementById('practice-session').classList.remove('hidden');
+
+                showPracticeQuestion();
+            } catch (error) {
+                showToast('Failed to load questions', 'error');
+            }
+        }
+
+        function showPracticeQuestion() {
+            const question = practiceState.questions[practiceState.currentIndex];
+            const container = document.getElementById('practice-session');
+
+            let optionsHtml = '';
+            if (question.type === 'mcq') {
+                const options = typeof question.options === 'string' ? JSON.parse(question.options) : question.options;
+                optionsHtml = `
+                    <div class="answers-grid">
+                        ${options.map(opt => `
+                            <button class="answer-option" onclick="submitPracticeAnswer(this, '${escapeHtml(opt)}')">
+                                ${escapeHtml(opt)}
+                            </button>
+                        `).join('')}
+                    </div>
+                `;
+            } else if (question.type === 'truefalse') {
+                optionsHtml = `
+                    <div class="tf-options">
+                        <button class="answer-option tf-option true" onclick="submitPracticeAnswer(this, 'true')">✓ True</button>
+                        <button class="answer-option tf-option false" onclick="submitPracticeAnswer(this, 'false')">✕ False</button>
+                    </div>
+                `;
+            } else {
+                optionsHtml = `
+                    <div style="max-width: 500px; margin: 0 auto;">
+                        <input type="text" id="short-answer" class="form-input" style="font-size: 1.25rem; text-align: center;" placeholder="Type your answer...">
+                        <button class="btn btn-primary btn-lg w-full mt-lg" onclick="submitShortPracticeAnswer()">Submit Answer</button>
+                    </div>
+                `;
+            }
+
+            container.innerHTML = `
+                <div class="flex justify-between items-center mb-xl">
+                    <button class="btn btn-glass" onclick="endPractice()">← Back</button>
+                    <div class="flex gap-md">
+                        <span class="badge badge-primary">Question ${practiceState.currentIndex + 1}/${practiceState.questions.length}</span>
+                        <span class="badge badge-success">✓ ${practiceState.correct}</span>
+                    </div>
+                </div>
+                
+                <div class="question-container animate-slide-up">
+                    <div class="question-card glass-card">
+                        <span class="question-type-badge">${question.type.toUpperCase()}</span>
+                        <p class="question-text">${escapeHtml(question.question_text)}</p>
+                    </div>
+                    
+                    ${optionsHtml}
+                </div>
+            `;
+        }
+
+        async function submitPracticeAnswer(button, answer) {
+            const question = practiceState.questions[practiceState.currentIndex];
+
+            // Disable all buttons
+            document.querySelectorAll('.answer-option').forEach(btn => btn.disabled = true);
+            button.classList.add('selected');
+
+            try {
+                const result = await api.post('/practice/submit-answer', {
+                    question_id: question.id,
+                    answer: answer,
+                    category_id: practiceState.categoryId
+                });
+
+                practiceState.attempted++;
+
+                if (result.is_correct) {
+                    practiceState.correct++;
+                    button.classList.add('correct');
+                    showToast('Correct! 🎉', 'success');
+                } else {
+                    button.classList.add('incorrect');
+                    // Show correct answer
+                    document.querySelectorAll('.answer-option').forEach(btn => {
+                        if (btn.textContent.trim().toLowerCase() === result.correct_answer.toLowerCase()) {
+                            btn.classList.add('correct');
+                        }
+                    });
+                    showToast(`Incorrect. Correct: ${result.correct_answer}`, 'error');
+                }
+
+                // Show explanation if available
+                if (result.explanation) {
+                    const explanationDiv = document.createElement('div');
+                    explanationDiv.className = 'glass-card mt-lg animate-fade-in';
+                    explanationDiv.innerHTML = `
+                        <h4>💡 Explanation</h4>
+                        <p class="mt-sm opacity-75">${escapeHtml(result.explanation)}</p>
+                    `;
+                    document.querySelector('.question-container').appendChild(explanationDiv);
+                }
+
+                // Add next button
+                const nextDiv = document.createElement('div');
+                nextDiv.className = 'text-center mt-xl';
+                nextDiv.innerHTML = practiceState.currentIndex < practiceState.questions.length - 1
+                    ? `<button class="btn btn-primary btn-lg" onclick="nextPracticeQuestion()">Next Question →</button>`
+                    : `<button class="btn btn-success btn-lg" onclick="showPracticeResults()">View Results 🏆</button>`;
+                document.querySelector('.question-container').appendChild(nextDiv);
+
+            } catch (error) {
+                showToast('Failed to submit answer', 'error');
+            }
+        }
+
+        function submitShortPracticeAnswer() {
+            const input = document.getElementById('short-answer');
+            if (input.value.trim()) {
+                submitPracticeAnswer(input, input.value.trim());
+            }
+        }
+
+        function nextPracticeQuestion() {
+            practiceState.currentIndex++;
+            showPracticeQuestion();
+        }
+
+        function showPracticeResults() {
+            const accuracy = Math.round((practiceState.correct / practiceState.attempted) * 100);
+
+            document.getElementById('practice-session').innerHTML = `
+                <div class="text-center" style="max-width: 500px; margin: 0 auto;">
+                    <div style="font-size: 5rem; margin-bottom: var(--spacing-lg);">
+                        ${accuracy >= 80 ? '🏆' : accuracy >= 60 ? '⭐' : accuracy >= 40 ? '📚' : '💪'}
+                    </div>
+                    
+                    <h2 class="gradient-text mb-lg">Practice Complete!</h2>
+                    
+                    <div class="glass-card">
+                        <div class="grid grid-3">
+                            <div class="stat-card">
+                                <div class="stat-value">${practiceState.correct}</div>
+                                <div class="stat-label">Correct</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value">${practiceState.attempted}</div>
+                                <div class="stat-label">Attempted</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value">${accuracy}%</div>
+                                <div class="stat-label">Accuracy</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="flex gap-md justify-center mt-xl">
+                        <button class="btn btn-primary" onclick="startPractice(${practiceState.categoryId})">Practice Again</button>
+                        <button class="btn btn-glass" onclick="endPractice()">Choose Category</button>
+                    </div>
+                </div>
+            `;
+
+            if (accuracy >= 80) showConfetti();
+        }
+
+        function endPractice() {
+            document.getElementById('category-selection').classList.remove('hidden');
+            document.getElementById('practice-session').classList.add('hidden');
+            document.getElementById('practice-session').innerHTML = '';
+            loadCategories();
+        }
+
+        init();
+    </script>
+</body>
+
+</html>

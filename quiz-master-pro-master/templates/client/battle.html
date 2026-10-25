@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Battle Mode - Quiz Master Pro</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Outfit:wght@700;800;900&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/css/game.css">
+    <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
+</head>
+
+<body>
+    <div class="animated-bg"></div>
+    <div class="particles"></div>
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <a href="/client/home" class="sidebar-brand">
+            <span>🧠</span>
+            <span>Quiz Master Pro</span>
+        </a>
+
+        <nav>
+            <ul class="sidebar-nav">
+                <li class="sidebar-nav-item">
+                    <a href="/client/home" class="sidebar-nav-link">
+                        <span class="icon">🏠</span>
+                        <span>Home</span>
+                    </a>
+                </li>
+                <li class="sidebar-nav-item">
+                    <a href="/client/practice" class="sidebar-nav-link">
+                        <span class="icon">📚</span>
+                        <span>Practice</span>
+                    </a>
+                </li>
+                <li class="sidebar-nav-item">
+                    <a href="/client/battle" class="sidebar-nav-link active">
+                        <span class="icon">⚔️</span>
+                        <span>Battle Mode</span>
+                    </a>
+                </li>
+                <li class="sidebar-nav-item">
+                    <a href="/client/chat" class="sidebar-nav-link">
+                        <span class="icon">💬</span>
+                        <span>Chat</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+
+        <div style="margin-top: auto; padding-top: var(--spacing-xl);">
+            <button class="btn btn-glass w-full logout-btn">🚪 Logout</button>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div id="battle-container">
+            <!-- Battle Lobby -->
+            <div id="battle-lobby">
+                <header class="text-center mb-xl">
+                    <h1 class="gradient-text">⚔️ Battle Mode</h1>
+                    <p class="opacity-75">Challenge other players to a quiz battle!</p>
+                </header>
+
+                <!-- Stats -->
+                <div class="grid grid-4 mb-xl" id="battle-stats">
+                    <div class="glass-card stat-card">
+                        <div class="stat-value" id="stat-total">0</div>
+                        <div class="stat-label">Total Battles</div>
+                    </div>
+                    <div class="glass-card stat-card">
+                        <div class="stat-value" id="stat-wins">0</div>
+                        <div class="stat-label">Wins</div>
+                    </div>
+                    <div class="glass-card stat-card">
+                        <div class="stat-value" id="stat-losses">0</div>
+                        <div class="stat-label">Losses</div>
+                    </div>
+                    <div class="glass-card stat-card">
+                        <div class="stat-value" id="stat-winrate">0%</div>
+                        <div class="stat-label">Win Rate</div>
+                    </div>
+                </div>
+
+                <!-- Battle Options -->
+                <div class="grid grid-2 mb-xl">
+                    <div class="glass-card text-center" style="padding: var(--spacing-2xl);">
+                        <div style="font-size: 4rem; margin-bottom: var(--spacing-lg);">🎲</div>
+                        <h3>Quick Match</h3>
+                        <p class="opacity-75 mt-sm mb-lg">Find a random opponent</p>
+                        <button class="btn btn-primary btn-lg" onclick="findMatch()">
+                            Find Opponent
+                        </button>
+                    </div>
+
+                    <div class="glass-card text-center" style="padding: var(--spacing-2xl);">
+                        <div style="font-size: 4rem; margin-bottom: var(--spacing-lg);">👥</div>
+                        <h3>Create Battle</h3>
+                        <p class="opacity-75 mt-sm mb-lg">Start waiting for challenger</p>
+                        <button class="btn btn-secondary btn-lg" onclick="createBattle()">
+                            Create Battle
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Recent Battles -->
+                <div class="glass-card">
+                    <h3 class="mb-lg">Recent Battles</h3>
+                    <div id="battle-history">
+                        <p class="text-center opacity-75">No battles yet. Start your first one!</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Matchmaking Screen -->
+            <div id="matchmaking-screen" class="hidden text-center" style="padding: var(--spacing-2xl);">
+                <div style="font-size: 5rem;" class="animate-pulse">🔍</div>
+                <h2 class="mt-xl">Finding Opponent...</h2>
+                <p class="opacity-75 mt-md">Please wait while we match you with another player</p>
+                <button class="btn btn-glass mt-xl" onclick="cancelMatchmaking()">Cancel</button>
+            </div>
+
+            <!-- Battle Arena -->
+            <div id="battle-arena" class="hidden">
+                <!-- Battle content loaded dynamically -->
+            </div>
+        </div>
+    </main>
+
+    <div id="toast-container" class="toast-container"></div>
+
+    <script src="/static/js/app.js"></script>
+    <script src="/static/js/auth.js"></script>
+    <script>
+        let socket = null;
+        let battleState = {
+            battleId: null,
+            questions: [],
+            currentIndex: 0,
+            myScore: 0,
+            opponentScore: 0,
+            opponent: null
+        };
+
+        async function init() {
+            await getCurrentUser();
+            loadBattleStats();
+            loadBattleHistory();
+            initSocket();
+        }
+
+        function initSocket() {
+            socket = io();
+
+            socket.on('opponent_joined', (data) => {
+                battleState.opponent = data.opponent;
+                startBattle();
+            });
+
+            socket.on('opponent_answered', (data) => {
+                if (data.is_correct) {
+                    battleState.opponentScore += data.points;
+                    updateScoreDisplay();
+                }
+            });
+
+            socket.on('battle_ended', (data) => {
+                showBattleResults(data);
+            });
+        }
+
+        async function loadBattleStats() {
+            try {
+                const result = await api.get('/battle/stats');
+                if (result.success) {
+                    document.getElementById('stat-total').textContent = result.stats.total_battles || 0;
+                    document.getElementById('stat-wins').textContent = result.stats.wins || 0;
+                    document.getElementById('stat-losses').textContent = result.stats.losses || 0;
+                    document.getElementById('stat-winrate').textContent = `${result.stats.win_rate || 0}%`;
+                }
+            } catch (error) {
+                console.error('Failed to load stats:', error);
+            }
+        }
+
+        async function loadBattleHistory() {
+            try {
+                const result = await api.get('/battle/history');
+                const container = document.getElementById('battle-history');
+
+                if (result.battles && result.battles.length > 0) {
+                    container.innerHTML = result.battles.slice(0, 5).map(battle => `
+                        <div class="flex justify-between items-center p-md" style="border-bottom: 1px solid rgba(255,255,255,0.1);">
+                            <div class="flex items-center gap-md">
+                                <span class="${battle.is_winner ? 'badge badge-success' : 'badge badge-danger'}">
+                                    ${battle.is_winner ? 'WIN' : 'LOSS'}
+                                </span>
+                                <span>vs ${escapeHtml(battle.player1_name === currentUser?.username ? battle.player2_name : battle.player1_name)}</span>
+                            </div>
+                            <div>
+                                <span>${battle.player1_score} - ${battle.player2_score}</span>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+            } catch (error) {
+                console.error('Failed to load history:', error);
+            }
+        }
+
+        async function createBattle() {
+            try {
+                const result = await api.post('/battle/create', { battle_type: '1v1' });
+                if (result.success) {
+                    battleState.battleId = result.battle_id;
+
+                    socket.emit('join_battle', {
+                        battle_id: result.battle_id,
+                        username: currentUser?.username
+                    });
+
+                    document.getElementById('battle-lobby').classList.add('hidden');
+                    document.getElementById('matchmaking-screen').classList.remove('hidden');
+                    document.querySelector('#matchmaking-screen h2').textContent = 'Waiting for Challenger...';
+
+                    showToast('Battle created! Waiting for opponent...', 'info');
+                }
+            } catch (error) {
+                showToast('Failed to create battle', 'error');
+            }
+        }
+
+        async function findMatch() {
+            document.getElementById('battle-lobby').classList.add('hidden');
+            document.getElementById('matchmaking-screen').classList.remove('hidden');
+
+            try {
+                const result = await api.post('/battle/find-opponent', {});
+
+                if (result.found) {
+                    battleState.battleId = result.battle_id;
+                    battleState.opponent = result.opponent;
+
+                    socket.emit('join_battle', {
+                        battle_id: result.battle_id,
+                        username: currentUser?.username
+                    });
+
+                    startBattle();
+                } else {
+                    // Create new battle and wait
+                    const createResult = await api.post('/battle/create', { battle_type: '1v1' });
+                    battleState.battleId = createResult.battle_id;
+
+                    socket.emit('join_battle', {
+                        battle_id: createResult.battle_id,
+                        username: currentUser?.username
+                    });
+
+                    showToast('Waiting for opponent...', 'info');
+                }
+            } catch (error) {
+                showToast('Failed to find match', 'error');
+                cancelMatchmaking();
+            }
+        }
+
+        function cancelMatchmaking() {
+            document.getElementById('matchmaking-screen').classList.add('hidden');
+            document.getElementById('battle-lobby').classList.remove('hidden');
+        }
+
+        async function startBattle() {
+            document.getElementById('matchmaking-screen').classList.add('hidden');
+            document.getElementById('battle-arena').classList.remove('hidden');
+
+            // Load questions
+            try {
+                const result = await api.get(`/battle/questions/${battleState.battleId}`);
+                battleState.questions = result.questions;
+                battleState.currentIndex = 0;
+                battleState.myScore = 0;
+                battleState.opponentScore = 0;
+
+                showBattleQuestion();
+            } catch (error) {
+                showToast('Failed to load questions', 'error');
+            }
+        }
+
+        function showBattleQuestion() {
+            const question = battleState.questions[battleState.currentIndex];
+            const container = document.getElementById('battle-arena');
+
+            const options = typeof question.options === 'string' ? JSON.parse(question.options) : question.options;
+
+            container.innerHTML = `
+                <div class="flex justify-between items-center mb-lg glass p-lg" style="border-radius: var(--radius-lg);">
+                    <div class="flex items-center gap-md">
+                        <div class="avatar">${getAvatarEmoji(currentUser?.avatar)}</div>
+                        <div>
+                            <div class="font-bold">${currentUser?.username}</div>
+                            <div class="gradient-text" style="font-size: 1.5rem; font-weight: bold;">${battleState.myScore}</div>
+                        </div>
+                    </div>
+                    
+                    <div class="text-center">
+                        <div class="badge badge-primary">Question ${battleState.currentIndex + 1}/${battleState.questions.length}</div>
+                    </div>
+                    
+                    <div class="flex items-center gap-md">
+                        <div class="text-right">
+                            <div class="font-bold">${battleState.opponent || 'Opponent'}</div>
+                            <div style="font-size: 1.5rem; font-weight: bold; color: var(--error);">${battleState.opponentScore}</div>
+                        </div>
+                        <div class="avatar" style="background: var(--error);">👤</div>
+                    </div>
+                </div>
+                
+                <div class="question-container animate-slide-up">
+                    <div class="question-card glass-card">
+                        <p class="question-text">${escapeHtml(question.question_text)}</p>
+                    </div>
+                    
+                    <div class="answers-grid">
+                        ${options.map(opt => `
+                            <button class="answer-option" onclick="submitBattleAnswer(this, '${escapeHtml(opt)}')">
+                                ${escapeHtml(opt)}
+                            </button>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        async function submitBattleAnswer(button, answer) {
+            const question = battleState.questions[battleState.currentIndex];
+
+            document.querySelectorAll('.answer-option').forEach(btn => btn.disabled = true);
+            button.classList.add('selected');
+
+            try {
+                const result = await api.post('/battle/submit-answer', {
+                    battle_id: battleState.battleId,
+                    question_id: question.id,
+                    answer: answer,
+                    time_taken: 5
+                });
+
+                if (result.is_correct) {
+                    battleState.myScore += result.points;
+                    button.classList.add('correct');
+                } else {
+                    button.classList.add('incorrect');
+                }
+
+                updateScoreDisplay();
+
+                socket.emit('battle_answer', {
+                    battle_id: battleState.battleId,
+                    user_id: currentUser?.id,
+                    is_correct: result.is_correct,
+                    points: result.points
+                });
+
+                setTimeout(() => {
+                    battleState.currentIndex++;
+                    if (battleState.currentIndex < battleState.questions.length) {
+                        showBattleQuestion();
+                    } else {
+                        completeBattle();
+                    }
+                }, 1500);
+
+            } catch (error) {
+                showToast('Failed to submit answer', 'error');
+            }
+        }
+
+        function updateScoreDisplay() {
+            // Scores are updated in showBattleQuestion
+        }
+
+        async function completeBattle() {
+            try {
+                const result = await api.post('/battle/complete', {
+                    battle_id: battleState.battleId
+                });
+
+                showBattleResults(result);
+            } catch (error) {
+                showToast('Failed to complete battle', 'error');
+            }
+        }
+
+        function showBattleResults(data) {
+            const isWinner = data.winner_id === currentUser?.id;
+            const container = document.getElementById('battle-arena');
+
+            container.innerHTML = `
+                <div class="text-center" style="max-width: 500px; margin: 0 auto;">
+                    <div style="font-size: 6rem;" class="${isWinner ? 'animate-bounce' : ''}">
+                        ${isWinner ? '🏆' : (data.winner_id ? '😔' : '🤝')}
+                    </div>
+                    
+                    <h2 class="mt-lg ${isWinner ? 'gradient-text' : ''}">
+                        ${isWinner ? 'Victory!' : (data.winner_id ? 'Defeat' : "It's a Tie!")}
+                    </h2>
+                    
+                    <div class="glass-card mt-xl">
+                        <div class="flex justify-around">
+                            <div class="text-center">
+                                <div class="avatar avatar-lg">${getAvatarEmoji(currentUser?.avatar)}</div>
+                                <div class="mt-md font-bold">${currentUser?.username}</div>
+                                <div class="stat-value">${battleState.myScore}</div>
+                            </div>
+                            <div class="flex items-center">
+                                <span style="font-size: 2rem;">VS</span>
+                            </div>
+                            <div class="text-center">
+                                <div class="avatar avatar-lg" style="background: var(--error);">👤</div>
+                                <div class="mt-md font-bold">${battleState.opponent || 'Opponent'}</div>
+                                <div class="stat-value" style="color: var(--error);">${battleState.opponentScore}</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    ${isWinner ? '<div class="xp-earned mt-lg"><span>✨</span> +50 XP Earned!</div>' : ''}
+                    
+                    <div class="flex gap-md justify-center mt-xl">
+                        <button class="btn btn-primary" onclick="findMatch()">Battle Again</button>
+                        <a href="/client/home" class="btn btn-glass">Back to Home</a>
+                    </div>
+                </div>
+            `;
+
+            if (isWinner) showConfetti();
+        }
+
+        init();
+    </script>
+</body>
+
+</html>

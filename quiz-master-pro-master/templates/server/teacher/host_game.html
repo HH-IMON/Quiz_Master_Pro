@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Host Game - Quiz Master Pro</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Outfit:wght@700;800;900&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/css/game.css">
+    <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
+</head>
+
+<body>
+    <div class="animated-bg"></div>
+    <div class="particles"></div>
+
+    <div class="game-container" id="game-container">
+        <!-- Quiz Selection -->
+        <div id="quiz-selection" class="text-center">
+            <h1 class="gradient-text mb-lg">🎮 Host a Live Game</h1>
+            <p class="opacity-75 mb-xl">Select a quiz to start hosting</p>
+
+            <div class="grid grid-3" id="quizzes-grid">
+                <p class="opacity-75">Loading quizzes...</p>
+            </div>
+
+            <a href="/server/dashboard" class="btn btn-glass mt-xl">← Back to Dashboard</a>
+        </div>
+
+        <!-- Waiting Room (Host View) -->
+        <div id="waiting-room" class="hidden">
+            <div class="text-center">
+                <h1 class="gradient-text">🎮 Game Ready!</h1>
+                <p class="opacity-75 mb-lg" id="quiz-name">Quiz Name</p>
+
+                <div class="join-code" id="room-code">XXXXXX</div>
+                <p class="opacity-75">Share this code with your students</p>
+
+                <div class="glass-card mt-xl" style="max-width: 800px; margin: 0 auto;">
+                    <h3>Players Joined</h3>
+                    <div class="participants-grid mt-lg" id="participants-grid">
+                        <p class="opacity-75">Waiting for players...</p>
+                    </div>
+                    <p class="participant-count mt-lg">
+                        <span id="participant-count">0</span> players ready
+                    </p>
+                </div>
+
+                <div class="flex gap-lg justify-center mt-xl">
+                    <button class="btn btn-primary btn-lg" onclick="startGame()" id="start-btn" disabled>
+                        Start Game 🚀
+                    </button>
+                    <button class="btn btn-danger btn-lg" onclick="cancelGame()">
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Host Control View -->
+        <div id="host-view" class="hidden">
+            <!-- Question display for host -->
+        </div>
+
+        <!-- Game Results -->
+        <div id="results-view" class="hidden">
+            <!-- Final results -->
+        </div>
+    </div>
+
+    <!-- Host Controls (Fixed Bottom) -->
+    <div class="host-controls hidden" id="host-controls">
+        <button class="btn btn-warning" onclick="pauseGame()" id="pause-btn">⏸️ Pause</button>
+        <button class="btn btn-primary" onclick="nextQuestion()" id="next-btn">Next →</button>
+        <button class="btn btn-secondary" onclick="showLeaderboard()">🏆 Leaderboard</button>
+        <button class="btn btn-danger" onclick="endGame()">End Game</button>
+    </div>
+
+    <div id="toast-container" class="toast-container"></div>
+
+    <script src="/static/js/app.js"></script>
+    <script src="/static/js/auth.js"></script>
+    <script>
+        let socket = null;
+        let gameState = {
+            roomCode: null,
+            quizId: null,
+            questions: [],
+            currentQuestion: 0,
+            participants: [],
+            isStarted: false,
+            isPaused: false
+        };
+
+        async function init() {
+            const user = await getCurrentUser();
+            if (!user || !['teacher', 'admin'].includes(user.role)) {
+                window.location.href = '/server/login';
+                return;
+            }
+
+            initSocket();
+
+            // Check if quiz ID is in URL
+            const params = new URLSearchParams(window.location.search);
+            const quizId = params.get('quiz');
+
+            if (quizId) {
+                createRoom(quizId);
+            } else {
+                loadMyQuizzes();
+            }
+        }
+
+        function initSocket() {
+            socket = io();
+
+            socket.on('connect', () => {
+                console.log('Host connected');
+            });
+
+            socket.on('player_joined', (data) => {
+                gameState.participants = data.players || [];
+                updateParticipantsDisplay();
+                showToast(`${data.username} joined!`, 'success');
+            });
+
+            socket.on('player_left', (data) => {
+                gameState.participants = gameState.participants.filter(p => p.username !== data.username);
+                updateParticipantsDisplay();
+                showToast(`${data.username} left`, 'info');
+            });
+
+            socket.on('answer_received', (data) => {
+                updateAnswerCount();
+            });
+        }
+
+        async function loadMyQuizzes() {
+            try {
+                const result = await api.get('/quiz/my-quizzes');
+                const grid = document.getElementById('quizzes-grid');
+
+                if (result.quizzes && result.quizzes.length > 0) {
+                    grid.innerHTML = result.quizzes.map(quiz => `
+                        <div class="glass-card cursor-pointer" onclick="createRoom(${quiz.id})" 
+                             style="padding: var(--spacing-xl);">
+                            <div style="font-size: 2.5rem; margin-bottom: var(--spacing-md);">
+                                ${quiz.category_icon || '📚'}
+                            </div>
+                            <h4>${escapeHtml(quiz.title)}</h4>
+                            <div class="flex gap-sm justify-center mt-md">
+                                <span class="badge badge-glass">${quiz.question_count || 0} Q</span>
+                                <span class="badge badge-${quiz.difficulty === 'easy' ? 'success' : quiz.difficulty === 'hard' ? 'danger' : 'warning'}">
+                                    ${quiz.difficulty}
+                                </span>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    grid.innerHTML = `
+                        <div class="glass-card text-center" style="grid-column: span 3; padding: var(--spacing-2xl);">
+                            <p class="opacity-75">No quizzes available. Create one first!</p>
+                            <a href="/server/teacher/create-quiz" class="btn btn-primary mt-lg">Create Quiz</a>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                showToast('Failed to load quizzes', 'error');
+            }
+        }
+
+        let refreshParticipantsInterval = null;
+
+        async function createRoom(quizId) {
+            try {
+                const result = await api.post('/game/create-room', { quiz_id: quizId });
+
+                if (result.success) {
+                    gameState.roomCode = result.room_code;
+                    gameState.quizId = quizId;
+
+                    // Join socket room as host
+                    socket.emit('host_game', {
+                        room_code: result.room_code,
+                        user_id: currentUser?.id
+                    });
+
+                    // Show waiting room
+                    document.getElementById('quiz-selection').classList.add('hidden');
+                    document.getElementById('waiting-room').classList.remove('hidden');
+                    document.getElementById('room-code').textContent = result.room_code;
+                    document.getElementById('quiz-name').textContent = result.quiz_title;
+
+                    // Start polling for participant updates
+                    startParticipantRefresh();
+                }
+            } catch (error) {
+                showToast(error.message || 'Failed to create room', 'error');
+            }
+        }
+
+        function startParticipantRefresh() {
+            // Fetch participants immediately
+            fetchParticipants();
+
+            // Then refresh every 1 second
+            refreshParticipantsInterval = setInterval(() => {
+                fetchParticipants();
+            }, 1000);
+        }
+
+        function stopParticipantRefresh() {
+            if (refreshParticipantsInterval) {
+                clearInterval(refreshParticipantsInterval);
+                refreshParticipantsInterval = null;
+            }
+        }
+
+        async function fetchParticipants() {
+            try {
+                const result = await api.get(`/game/room/${gameState.roomCode}`);
+                if (result.success && result.participants) {
+                    gameState.participants = result.participants;
+                    updateParticipantsDisplay();
+                }
+            } catch (error) {
+                console.error('Failed to fetch participants:', error);
+            }
+        }
+
+        function updateParticipantsDisplay() {
+            const grid = document.getElementById('participants-grid');
+            const count = document.getElementById('participant-count');
+            const startBtn = document.getElementById('start-btn');
+
+            if (gameState.participants.length > 0) {
+                grid.innerHTML = gameState.participants.map(p => `
+                    <div class="participant-card">
+                        <div class="avatar">${getAvatarEmoji(p.avatar)}</div>
+                        <p>${escapeHtml(p.username)}</p>
+                    </div>
+                `).join('');
+
+                startBtn.disabled = false;
+            } else {
+                grid.innerHTML = '<p class="opacity-75">Waiting for players...</p>';
+                startBtn.disabled = true;
+            }
+
+            count.textContent = gameState.participants.length;
+        }
+
+        async function startGame() {
+            try {
+                // Stop polling participants when game starts
+                stopParticipantRefresh();
+
+                const result = await api.post(`/game/start/${gameState.roomCode}`);
+
+                if (result.success) {
+                    console.log('Game started successfully', result);
+                    gameState.questions = result.questions || [];
+                    gameState.currentQuestion = 0;
+                    gameState.isStarted = true;
+
+                    // Notify players
+                    socket.emit('start_game', { room_code: gameState.roomCode });
+
+                    // Show host view
+                    document.getElementById('waiting-room').classList.add('hidden');
+                    document.getElementById('host-view').classList.remove('hidden');
+                    document.getElementById('host-controls').classList.remove('hidden');
+
+                    showHostQuestion();
+                } else {
+                    console.error('Failed to start game:', result);
+                    showToast(result.message || 'Failed to start game', 'error');
+                }
+            } catch (error) {
+                console.error('Error starting game:', error);
+                showToast(error.message || 'Failed to start game', 'error');
+            }
+        }
+
+        function showHostQuestion() {
+            if (gameState.currentQuestion >= gameState.questions.length) {
+                endGame();
+                return;
+            }
+
+            const question = gameState.questions[gameState.currentQuestion];
+            const container = document.getElementById('host-view');
+
+            let optionsHtml = '';
+            if (question.type === 'mcq') {
+                const options = typeof question.options === 'string' ? JSON.parse(question.options) : question.options;
+                optionsHtml = `
+                    <div class="answers-grid mt-xl">
+                        ${options.map((opt, i) => `
+                            <div class="answer-option" style="pointer-events: none;">
+                                ${escapeHtml(opt)}
+                                ${opt.toLowerCase() === question.correct_answer.toLowerCase() ? '<span class="answer-icon">✓</span>' : ''}
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            }
+
+            container.innerHTML = `
+                <div class="game-header glass mb-xl">
+                    <div class="question-progress">
+                        <span class="question-number">Question ${gameState.currentQuestion + 1} of ${gameState.questions.length}</span>
+                    </div>
+                    <div class="flex items-center gap-lg">
+                        <span class="badge badge-primary">
+                            ${gameState.participants.length} players
+                        </span>
+                        <div class="question-timer">
+                            <div class="timer-circle" id="timer-circle">
+                                <span class="timer-value" id="timer-value">30</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="question-container">
+                    <div class="question-card glass-card">
+                        <span class="question-type-badge">${question.type.toUpperCase()}</span>
+                        <p class="question-text">${escapeHtml(question.question_text)}</p>
+                    </div>
+                    
+                    ${optionsHtml}
+                    
+                    <div class="glass-card mt-xl text-center">
+                        <p>Correct Answer: <strong class="gradient-text">${escapeHtml(question.correct_answer)}</strong></p>
+                        <p class="opacity-75 mt-sm">Answers received: <span id="answer-count">0</span> / ${gameState.participants.length}</p>
+                    </div>
+                </div>
+            `;
+
+            // Emit question to players
+            socket.emit('new_question', {
+                room_code: gameState.roomCode,
+                question: {
+                    id: question.id,
+                    question_text: question.question_text,
+                    type: question.type,
+                    options: question.options
+                },
+                question_number: gameState.currentQuestion + 1,
+                total_questions: gameState.questions.length
+            });
+
+            startHostTimer();
+        }
+
+        let timerInterval = null;
+
+        function startHostTimer() {
+            clearInterval(timerInterval);
+            let timeLeft = 30;
+
+            timerInterval = setInterval(() => {
+                timeLeft--;
+
+                const timerValue = document.getElementById('timer-value');
+                if (timerValue) {
+                    timerValue.textContent = timeLeft;
+                }
+
+                if (timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    // Auto advance after a delay
+                    setTimeout(() => showLeaderboard(), 2000);
+                }
+            }, 1000);
+        }
+
+        function updateAnswerCount() {
+            const countEl = document.getElementById('answer-count');
+            if (countEl) {
+                countEl.textContent = parseInt(countEl.textContent) + 1;
+            }
+        }
+
+        async function nextQuestion() {
+            gameState.currentQuestion++;
+
+            if (gameState.currentQuestion >= gameState.questions.length) {
+                endGame();
+            } else {
+                showHostQuestion();
+            }
+        }
+
+        async function showLeaderboard() {
+            try {
+                const result = await api.get(`/game/leaderboard/${gameState.roomCode}`);
+                const leaderboard = result.leaderboard || [];
+
+                const container = document.getElementById('host-view');
+                container.innerHTML = `
+                    <div class="leaderboard-container">
+                        <h2 class="text-center gradient-text mb-xl">🏆 Leaderboard</h2>
+                        
+                        <ul class="leaderboard-list">
+                            ${leaderboard.slice(0, 10).map((player, i) => `
+                                <li class="leaderboard-item ${i === 0 ? 'top-1' : ''} ${i === 1 ? 'top-2' : ''} ${i === 2 ? 'top-3' : ''}">
+                                    <div class="leaderboard-position">
+                                        ${i < 3 ? ['🥇', '🥈', '🥉'][i] : i + 1}
+                                    </div>
+                                    <div class="leaderboard-info">
+                                        <div class="avatar avatar-sm">${getAvatarEmoji(player.avatar)}</div>
+                                        <span class="leaderboard-name">${escapeHtml(player.username)}</span>
+                                    </div>
+                                    <div class="leaderboard-score">${player.score}</div>
+                                </li>
+                            `).join('')}
+                        </ul>
+                        
+                        <div class="text-center mt-xl">
+                            <p class="opacity-75">Question ${gameState.currentQuestion + 1} of ${gameState.questions.length}</p>
+                        </div>
+                    </div>
+                `;
+
+                // Emit to players
+                socket.emit('leaderboard_update', {
+                    room_code: gameState.roomCode,
+                    leaderboard: leaderboard
+                });
+
+            } catch (error) {
+                console.error('Failed to load leaderboard:', error);
+            }
+        }
+
+        function pauseGame() {
+            gameState.isPaused = !gameState.isPaused;
+            const btn = document.getElementById('pause-btn');
+
+            if (gameState.isPaused) {
+                clearInterval(timerInterval);
+                btn.textContent = '▶️ Resume';
+            } else {
+                startHostTimer();
+                btn.textContent = '⏸️ Pause';
+            }
+        }
+
+        async function endGame() {
+            clearInterval(timerInterval);
+
+            try {
+                const result = await api.post(`/game/end/${gameState.roomCode}`);
+
+                socket.emit('game_ended', {
+                    room_code: gameState.roomCode,
+                    final_leaderboard: result.final_results || []
+                });
+
+                // Show final results
+                document.getElementById('host-view').classList.add('hidden');
+                document.getElementById('host-controls').classList.add('hidden');
+                document.getElementById('results-view').classList.remove('hidden');
+
+                const leaderboard = result.final_results || [];
+                const winner = leaderboard[0];
+
+                document.getElementById('results-view').innerHTML = `
+                    <div class="results-container">
+                        <div class="trophy-icon">🏆</div>
+                        <h1 class="results-title gradient-text">Game Complete!</h1>
+                        
+                        ${winner ? `
+                            <div class="winner-card mt-xl">
+                                <div class="avatar winner-avatar">${getAvatarEmoji(winner.avatar)}</div>
+                                <h2 class="winner-name">${escapeHtml(winner.username)}</h2>
+                                <p>Winner!</p>
+                                <div class="winner-score">${winner.score} pts</div>
+                            </div>
+                        ` : ''}
+                        
+                        <div class="glass-card mt-xl" style="max-width: 600px; margin: 0 auto;">
+                            <h3 class="mb-lg">Final Standings</h3>
+                            <ul class="leaderboard-list">
+                                ${leaderboard.slice(0, 5).map((player, i) => `
+                                    <li class="leaderboard-item">
+                                        <div class="leaderboard-position">${i + 1}</div>
+                                        <div class="leaderboard-info">
+                                            <div class="avatar avatar-sm">${getAvatarEmoji(player.avatar)}</div>
+                                            <span>${escapeHtml(player.username)}</span>
+                                        </div>
+                                        <div class="leaderboard-score">${player.score}</div>
+                                    </li>
+                                `).join('')}
+                            </ul>
+                        </div>
+                        
+                        <div class="flex gap-lg justify-center mt-xl">
+                            <a href="/server/dashboard" class="btn btn-primary btn-lg">Back to Dashboard</a>
+                            <button class="btn btn-secondary btn-lg" onclick="location.reload()">Host Another</button>
+                        </div>
+                    </div>
+                `;
+
+                showConfetti();
+
+            } catch (error) {
+                showToast('Failed to end game properly', 'error');
+            }
+        }
+
+        function cancelGame() {
+            stopParticipantRefresh();
+            if (confirm('Are you sure you want to cancel this game?')) {
+                window.location.href = '/server/dashboard';
+            }
+        }
+
+        init();
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teacher Dashboard - Quiz Master Pro</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Outfit:wght@700;800;900&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
+</head>
+
+<body>
+    <div class="animated-bg"></div>
+    <div class="particles"></div>
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <a href="/server/dashboard" class="sidebar-brand">
+            <span>🧠</span>
+            <span>Quiz Master Pro</span>
+        </a>
+
+        <div class="badge badge-primary mb-xl" style="width: 100%; justify-content: center;">
+            🖥️ Server Portal
+        </div>
+
+        <nav>
+            <ul class="sidebar-nav">
+                <li class="sidebar-nav-item">
+                    <a href="/server/dashboard" class="sidebar-nav-link active">
+                        <span class="icon">📊</span>
+                        <span>Dashboard</span>
+                    </a>
+                </li>
+                <li class="sidebar-nav-item">
+                    <a href="/server/teacher/create-quiz" class="sidebar-nav-link">
+                        <span class="icon">➕</span>
+                        <span>Create Quiz</span>
+                    </a>
+                </li>
+                <li class="sidebar-nav-item">
+                    <a href="/server/teacher/question-bank" class="sidebar-nav-link">
+                        <span class="icon">📚</span>
+                        <span>Question Bank</span>
+                    </a>
+                </li>
+                <li class="sidebar-nav-item">
+                    <a href="/server/teacher/host-game" class="sidebar-nav-link">
+                        <span class="icon">🎮</span>
+                        <span>Host Game</span>
+                    </a>
+                </li>
+                <li class="sidebar-nav-item">
+                    <a href="/server/teacher/results" class="sidebar-nav-link">
+                        <span class="icon">📈</span>
+                        <span>Results</span>
+                    </a>
+                </li>
+                <li class="sidebar-nav-item">
+                    <a href="/server/teacher/exams" class="sidebar-nav-link">
+                        <span class="icon">📋</span>
+                        <span>Exams</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+
+        <div style="margin-top: auto; padding-top: var(--spacing-xl);">
+            <button class="btn btn-glass w-full logout-btn">🚪 Logout</button>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <header class="flex justify-between items-center mb-xl">
+            <div>
+                <div class="title-box">
+                    <h1 class="gradient-text" style="margin-bottom: 0;">Teacher Dashboard</h1>
+                </div>
+                <p class="opacity-75">Manage your quizzes and track student progress</p>
+            </div>
+            <div class="flex items-center gap-md">
+                <span class="badge badge-glass live-users-badge hidden">🔴 0 Online</span>
+                <span class="badge badge-success">Teacher</span>
+                <div class="avatar" id="user-avatar">👨‍🏫</div>
+            </div>
+        </header>
+
+        <!-- Quick Stats -->
+        <div class="grid grid-4 mb-xl">
+            <div class="glass-card stat-card">
+                <div class="stat-value" id="stat-quizzes">0</div>
+                <div class="stat-label">My Quizzes</div>
+            </div>
+            <div class="glass-card stat-card">
+                <div class="stat-value" id="stat-questions">0</div>
+                <div class="stat-label">Questions</div>
+            </div>
+            <div class="glass-card stat-card">
+                <div class="stat-value" id="stat-games">0</div>
+                <div class="stat-label">Games Hosted</div>
+            </div>
+            <div class="glass-card stat-card">
+                <div class="stat-value" id="stat-participants">0</div>
+                <div class="stat-label">Total Players</div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="grid grid-3 mb-xl">
+            <a href="/server/teacher/create-quiz" class="glass-card text-center cursor-pointer"
+                style="padding: var(--spacing-xl);">
+                <div style="font-size: 3rem; margin-bottom: var(--spacing-md);">➕</div>
+                <h4>Create Quiz</h4>
+                <p class="opacity-75 mt-sm">Build a new quiz</p>
+            </a>
+
+            <a href="/server/teacher/host-game" class="glass-card text-center cursor-pointer"
+                style="padding: var(--spacing-xl);">
+                <div style="font-size: 3rem; margin-bottom: var(--spacing-md);">🎮</div>
+                <h4>Host Live Game</h4>
+                <p class="opacity-75 mt-sm">Start a quiz session</p>
+            </a>
+
+            <a href="/server/teacher/question-bank" class="glass-card text-center cursor-pointer"
+                style="padding: var(--spacing-xl);">
+                <div style="font-size: 3rem; margin-bottom: var(--spacing-md);">📚</div>
+                <h4>Question Bank</h4>
+                <p class="opacity-75 mt-sm">Manage questions</p>
+            </a>
+        </div>
+
+        <!-- My Quizzes -->
+        <div class="glass-card">
+            <div class="card-header">
+                <h3 class="card-title">My Quizzes</h3>
+                <a href="/server/teacher/create-quiz" class="btn btn-primary btn-sm">+ New Quiz</a>
+            </div>
+
+            <div id="quizzes-list">
+                <p class="text-center opacity-75 p-xl">Loading quizzes...</p>
+            </div>
+        </div>
+    </main>
+
+    <div id="toast-container" class="toast-container"></div>
+
+    <script src="/static/js/app.js"></script>
+    <script src="/static/js/auth.js"></script>
+    <script>
+        async function init() {
+            const user = await getCurrentUser();
+            if (!user || !['teacher', 'admin'].includes(user.role)) {
+                window.location.href = '/server/login';
+                return;
+            }
+
+            loadMyQuizzes();
+            loadStats();
+        }
+
+        async function loadMyQuizzes() {
+            try {
+                const result = await api.get('/quiz/my-quizzes');
+                const container = document.getElementById('quizzes-list');
+
+                if (result.quizzes && result.quizzes.length > 0) {
+                    container.innerHTML = `
+                        <div class="table-container">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Title</th>
+                                        <th>Category</th>
+                                        <th>Questions</th>
+                                        <th>Difficulty</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${result.quizzes.map(quiz => `
+                                        <tr>
+                                            <td>
+                                                <strong>${escapeHtml(quiz.title)}</strong>
+                                            </td>
+                                            <td>
+                                                <span>${quiz.category_icon || '📚'} ${escapeHtml(quiz.category_name || 'Uncategorized')}</span>
+                                            </td>
+                                            <td>${quiz.question_count || 0}</td>
+                                            <td>
+                                                <span class="badge badge-${quiz.difficulty === 'easy' ? 'success' : quiz.difficulty === 'hard' ? 'danger' : 'warning'}">
+                                                    ${quiz.difficulty}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <span class="badge ${quiz.is_active ? 'badge-success' : 'badge-glass'}">
+                                                    ${quiz.is_active ? 'Active' : 'Inactive'}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <div class="flex gap-sm">
+                                                    <a href="/server/teacher/create-quiz?edit=${quiz.id}" class="btn btn-glass btn-sm">Edit</a>
+                                                    <button class="btn btn-primary btn-sm" onclick="hostQuiz(${quiz.id})">Host</button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    `;
+
+                    document.getElementById('stat-quizzes').textContent = result.quizzes.length;
+
+                    let totalQuestions = 0;
+                    result.quizzes.forEach(q => totalQuestions += q.question_count || 0);
+                    document.getElementById('stat-questions').textContent = totalQuestions;
+                } else {
+                    container.innerHTML = `
+                        <div class="text-center p-xl">
+                            <div style="font-size: 4rem; margin-bottom: var(--spacing-lg);">📝</div>
+                            <h4>No quizzes yet</h4>
+                            <p class="opacity-75 mt-sm mb-lg">Create your first quiz to get started!</p>
+                            <a href="/server/teacher/create-quiz" class="btn btn-primary">Create Quiz</a>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                showToast('Failed to load quizzes', 'error');
+            }
+        }
+
+        async function loadStats() {
+            try {
+                const rooms = await api.get('/game/my-rooms');
+                if (rooms.rooms) {
+                    document.getElementById('stat-games').textContent = rooms.rooms.length;
+
+                    let totalParticipants = 0;
+                    rooms.rooms.forEach(r => totalParticipants += r.participant_count || 0);
+                    document.getElementById('stat-participants').textContent = totalParticipants;
+                }
+            } catch (error) {
+                console.error('Failed to load stats:', error);
+            }
+        }
+
+        function hostQuiz(quizId) {
+            window.location.href = `/server/teacher/host-game?quiz=${quizId}`;
+        }
+
+        init();
+    </script>
+</body>
+
+</html>

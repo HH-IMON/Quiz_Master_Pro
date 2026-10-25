@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analytics - Quiz Master Pro</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Outfit:wght@700;800;900&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+
+<body>
+    <div class="animated-bg"></div>
+    <div class="particles"></div>
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <a href="/server/dashboard" class="sidebar-brand">
+            <span>🧠</span>
+            <span>Quiz Master Pro</span>
+        </a>
+
+        <div class="badge badge-danger mb-xl" style="width: 100%; justify-content: center;">
+            👑 Admin Portal
+        </div>
+
+        <nav>
+            <ul class="sidebar-nav">
+                <li class="sidebar-nav-item">
+                    <a href="/server/dashboard" class="sidebar-nav-link">
+                        <span class="icon">📊</span>
+                        <span>Dashboard</span>
+                    </a>
+                </li>
+                <li class="sidebar-nav-item">
+                    <a href="/server/admin/users" class="sidebar-nav-link">
+                        <span class="icon">👥</span>
+                        <span>Manage Users</span>
+                    </a>
+                </li>
+                <li class="sidebar-nav-item">
+                    <a href="/server/admin/analytics" class="sidebar-nav-link active">
+                        <span class="icon">📈</span>
+                        <span>Analytics</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+
+        <div style="margin-top: auto;">
+            <button class="btn btn-glass w-full logout-btn">🚪 Logout</button>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <header class="mb-xl">
+            <h1 class="gradient-text">📊 Platform Analytics</h1>
+            <p class="opacity-75">Insights and statistics about platform usage</p>
+        </header>
+
+        <!-- Overview Stats -->
+        <div class="grid grid-4 mb-xl">
+            <div class="glass-card stat-card">
+                <div class="stat-value" id="stat-total-users">0</div>
+                <div class="stat-label">Total Users</div>
+            </div>
+            <div class="glass-card stat-card">
+                <div class="stat-value" id="stat-active-users">0</div>
+                <div class="stat-label">Active Users (7d)</div>
+            </div>
+            <div class="glass-card stat-card">
+                <div class="stat-value" id="stat-games-today">0</div>
+                <div class="stat-label">Games Today</div>
+            </div>
+            <div class="glass-card stat-card">
+                <div class="stat-value" id="stat-questions-answered">0</div>
+                <div class="stat-label">Questions Answered</div>
+            </div>
+        </div>
+
+        <!-- Charts Row -->
+        <div class="grid grid-2 mb-xl">
+            <!-- User Growth -->
+            <div class="glass-card">
+                <h3 class="mb-lg">👥 User Distribution</h3>
+                <div id="user-chart"
+                    style="height: 200px; display: flex; align-items: flex-end; gap: var(--spacing-md); justify-content: center;">
+                    <!-- Chart bars will be inserted here -->
+                </div>
+            </div>
+
+            <!-- Quiz Stats -->
+            <div class="glass-card">
+                <h3 class="mb-lg">📝 Content Overview</h3>
+                <div class="grid grid-2 mt-lg">
+                    <div class="stat-card glass p-md text-center">
+                        <div class="stat-value" id="stat-quizzes">0</div>
+                        <div class="stat-label">Total Quizzes</div>
+                    </div>
+                    <div class="stat-card glass p-md text-center">
+                        <div class="stat-value" id="stat-questions">0</div>
+                        <div class="stat-label">Total Questions</div>
+                    </div>
+                    <div class="stat-card glass p-md text-center">
+                        <div class="stat-value" id="stat-categories">0</div>
+                        <div class="stat-label">Categories</div>
+                    </div>
+                    <div class="stat-card glass p-md text-center">
+                        <div class="stat-value" id="stat-game-rooms">0</div>
+                        <div class="stat-label">Games Hosted</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Most Active Users & Popular Quizzes -->
+        <div class="grid grid-2 mb-xl">
+            <div class="glass-card">
+                <h3 class="mb-lg">🏆 Most Active Students</h3>
+                <div id="active-students">
+                    <p class="opacity-75 text-center">Loading...</p>
+                </div>
+            </div>
+
+            <div class="glass-card">
+                <h3 class="mb-lg">🔥 Popular Categories</h3>
+                <div id="popular-categories">
+                    <p class="opacity-75 text-center">Loading...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="glass-card">
+            <h3 class="mb-lg">📋 Recent Activity</h3>
+            <div id="recent-activity">
+                <p class="opacity-75 text-center">Loading...</p>
+            </div>
+        </div>
+    </main>
+
+    <div id="toast-container" class="toast-container"></div>
+
+    <script src="/static/js/app.js"></script>
+    <script src="/static/js/auth.js"></script>
+    <script>
+        async function init() {
+            const user = await getCurrentUser();
+            if (!user || user.role !== 'admin') {
+                window.location.href = '/server/login';
+                return;
+            }
+
+            loadAnalytics();
+        }
+
+        async function loadAnalytics() {
+            try {
+                const stats = await api.get('/admin/stats');
+
+                // Update stats
+                document.getElementById('stat-total-users').textContent = stats.stats?.total_users || 0;
+                document.getElementById('stat-quizzes').textContent = stats.stats?.total_quizzes || 0;
+                document.getElementById('stat-questions').textContent = stats.stats?.total_questions || 0;
+                document.getElementById('stat-games-today').textContent = stats.stats?.total_games || 0;
+                document.getElementById('stat-active-users').textContent = stats.stats?.active_users || stats.stats?.total_users || 0;
+                document.getElementById('stat-categories').textContent = stats.stats?.categories || 0;
+                document.getElementById('stat-game-rooms').textContent = stats.stats?.total_games || 0;
+                document.getElementById('stat-questions-answered').textContent = stats.stats?.questions_answered || 0;
+
+                // User distribution chart
+                const userChart = document.getElementById('user-chart');
+                const students = stats.stats?.students || 0;
+                const teachers = stats.stats?.teachers || 0;
+                const admins = stats.stats?.admins || 0;
+                const maxUsers = Math.max(students, teachers, admins, 1);
+
+                userChart.innerHTML = `
+                    <div class="text-center">
+                        <div class="glass" style="width: 80px; height: ${(students / maxUsers) * 150}px; min-height: 20px; border-radius: var(--radius-md); background: linear-gradient(180deg, var(--primary-start), var(--primary-end));"></div>
+                        <p class="mt-sm font-bold">${students}</p>
+                        <p class="opacity-75" style="font-size: 0.75rem;">Students</p>
+                    </div>
+                    <div class="text-center">
+                        <div class="glass" style="width: 80px; height: ${(teachers / maxUsers) * 150}px; min-height: 20px; border-radius: var(--radius-md); background: linear-gradient(180deg, var(--warning), var(--accent-gold));"></div>
+                        <p class="mt-sm font-bold">${teachers}</p>
+                        <p class="opacity-75" style="font-size: 0.75rem;">Teachers</p>
+                    </div>
+                    <div class="text-center">
+                        <div class="glass" style="width: 80px; height: ${(admins / maxUsers) * 150}px; min-height: 20px; border-radius: var(--radius-md); background: linear-gradient(180deg, var(--error), var(--secondary-end));"></div>
+                        <p class="mt-sm font-bold">${admins}</p>
+                        <p class="opacity-75" style="font-size: 0.75rem;">Admins</p>
+                    </div>
+                `;
+
+                // Load leaderboard for active students
+                const leaderboard = await api.get('/admin/leaderboard?limit=5');
+                const activeStudents = document.getElementById('active-students');
+                if (leaderboard.leaderboard && leaderboard.leaderboard.length > 0) {
+                    activeStudents.innerHTML = leaderboard.leaderboard.map((user, i) => `
+                        <div class="flex items-center gap-md p-md" style="border-bottom: 1px solid rgba(255,255,255,0.1);">
+                            <span class="badge badge-glass">${i + 1}</span>
+                            <div class="avatar avatar-sm">${getAvatarEmoji(user.avatar)}</div>
+                            <span class="flex-1">${escapeHtml(user.username)}</span>
+                            <span class="badge badge-primary">${user.xp_points} XP</span>
+                        </div>
+                    `).join('');
+                } else {
+                    activeStudents.innerHTML = '<p class="opacity-75 text-center">No data yet</p>';
+                }
+
+                // Load categories
+                const categories = await api.get('/practice/categories');
+                const popularCategories = document.getElementById('popular-categories');
+                if (categories.categories && categories.categories.length > 0) {
+                    popularCategories.innerHTML = categories.categories.slice(0, 5).map(cat => `
+                        <div class="flex items-center gap-md p-md" style="border-bottom: 1px solid rgba(255,255,255,0.1);">
+                            <span style="font-size: 1.5rem;">${cat.icon || '📚'}</span>
+                            <span class="flex-1">${escapeHtml(cat.name)}</span>
+                            <span class="badge badge-glass">${cat.quiz_count || 0} quizzes</span>
+                        </div>
+                    `).join('');
+                } else {
+                    popularCategories.innerHTML = '<p class="opacity-75 text-center">No categories yet</p>';
+                }
+
+                // Recent activity placeholder
+                document.getElementById('recent-activity').innerHTML = `
+                    <div class="opacity-75 text-center p-lg">
+                        <p>📈 Activity tracking coming soon!</p>
+                        <p class="mt-sm" style="font-size: 0.875rem;">This will show recent games, user signups, and quiz completions.</p>
+                    </div>
+                `;
+
+            } catch (error) {
+                console.error('Failed to load analytics:', error);
+                showToast('Failed to load analytics', 'error');
+            }
+        }
+
+        init();
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Question Bank - Quiz Master Pro</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Outfit:wght@700;800;900&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+
+<body>
+    <div class="animated-bg"></div>
+    <div class="particles"></div>
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <a href="/server/dashboard" class="sidebar-brand">
+            <span>🧠</span>
+            <span>Quiz Master Pro</span>
+        </a>
+
+        <div class="badge badge-primary mb-xl" style="width: 100%; justify-content: center;">
+            🖥️ Server Portal
+        </div>
+
+        <nav>
+            <ul class="sidebar-nav">
+                <li class="sidebar-nav-item">
+                    <a href="/server/dashboard" class="sidebar-nav-link">
+                        <span class="icon">📊</span>
+                        <span>Dashboard</span>
+                    </a>
+                </li>
+                <li class="sidebar-nav-item">
+                    <a href="/server/teacher/create-quiz" class="sidebar-nav-link">
+                        <span class="icon">➕</span>
+                        <span>Create Quiz</span>
+                    </a>
+                </li>
+                <li class="sidebar-nav-item">
+                    <a href="/server/teacher/question-bank" class="sidebar-nav-link active">
+                        <span class="icon">📚</span>
+                        <span>Question Bank</span>
+                    </a>
+                </li>
+                <li class="sidebar-nav-item">
+                    <a href="/server/teacher/host-game" class="sidebar-nav-link">
+                        <span class="icon">🎮</span>
+                        <span>Host Game</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+
+        <div style="margin-top: auto;">
+            <button class="btn btn-glass w-full logout-btn">🚪 Logout</button>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <header class="flex justify-between items-center mb-xl">
+            <div>
+                <h1 class="gradient-text">Question Bank</h1>
+                <p class="opacity-75">Manage all your quiz questions</p>
+            </div>
+            <div class="flex gap-md">
+                <button class="btn btn-glass" onclick="showModal('create-quiz-modal')">
+                    📝 Create Quiz
+                </button>
+                <a href="/server/teacher/exams" class="btn btn-glass">
+                    📋 Schedule Exam
+                </a>
+                <button class="btn btn-primary" onclick="showModal('add-question-modal')">
+                    + Add Question
+                </button>
+            </div>
+        </header>
+
+        <!-- Filters -->
+        <div class="glass-card mb-xl">
+            <div class="grid grid-4">
+                <div class="form-group" style="margin: 0;">
+                    <label class="form-label">Quiz</label>
+                    <select id="filter-quiz" class="form-input form-select" onchange="loadQuestions()">
+                        <option value="">All Quizzes</option>
+                    </select>
+                </div>
+                <div class="form-group" style="margin: 0;">
+                    <label class="form-label">Type</label>
+                    <select id="filter-type" class="form-input form-select" onchange="loadQuestions()">
+                        <option value="">All Types</option>
+                        <option value="mcq">Multiple Choice</option>
+                        <option value="truefalse">True/False</option>
+                        <option value="short">Short Answer</option>
+                    </select>
+                </div>
+                <div class="form-group" style="margin: 0;">
+                    <label class="form-label">Search</label>
+                    <input type="text" id="search-input" class="form-input" placeholder="Search questions..."
+                        oninput="filterQuestions()">
+                </div>
+                <div class="form-group" style="margin: 0; display: flex; align-items: flex-end;">
+                    <button class="btn btn-glass w-full" onclick="clearFilters()">Clear Filters</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="grid grid-4 mb-xl">
+            <div class="glass-card stat-card">
+                <div class="stat-value" id="stat-total">0</div>
+                <div class="stat-label">Total Questions</div>
+            </div>
+            <div class="glass-card stat-card">
+                <div class="stat-value" id="stat-mcq">0</div>
+                <div class="stat-label">MCQ</div>
+            </div>
+            <div class="glass-card stat-card">
+                <div class="stat-value" id="stat-tf">0</div>
+                <div class="stat-label">True/False</div>
+            </div>
+            <div class="glass-card stat-card">
+                <div class="stat-value" id="stat-short">0</div>
+                <div class="stat-label">Short Answer</div>
+            </div>
+        </div>
+
+        <!-- Questions List -->
+        <div class="glass-card">
+            <div class="card-header">
+                <h3 class="card-title">Questions</h3>
+                <span class="badge badge-glass" id="question-count">0 questions</span>
+            </div>
+
+            <div id="questions-list">
+                <p class="text-center opacity-75 p-xl">Loading questions...</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- Add Question Modal -->
+    <div class="modal-overlay" id="add-question-modal">
+        <div class="modal" style="max-width: 600px;">
+            <div class="modal-header">
+                <h3 class="modal-title">Add Question</h3>
+                <button class="modal-close" onclick="hideModal('add-question-modal')">×</button>
+            </div>
+
+            <form id="add-question-form">
+                <div class="form-group">
+                    <label class="form-label">Select Quiz *</label>
+                    <select name="quiz_id" class="form-input form-select" id="modal-quiz-select" required>
+                        <option value="">Choose a quiz</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Question Type *</label>
+                    <select name="type" class="form-input form-select" id="modal-type" onchange="updateModalOptions()"
+                        required>
+                        <option value="mcq">Multiple Choice</option>
+                        <option value="truefalse">True/False</option>
+                        <option value="short">Short Answer</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Question *</label>
+                    <textarea name="question_text" class="form-input form-textarea" placeholder="Enter your question..."
+                        required></textarea>
+                </div>
+
+                <div id="modal-options-container">
+                    <div class="form-group">
+                        <label class="form-label">Options (one per line) *</label>
+                        <textarea id="modal-options" class="form-input form-textarea"
+                            placeholder="Option A&#10;Option B&#10;Option C&#10;Option D" rows="4"></textarea>
+                    </div>
+                </div>
+
+                <div class="form-group" id="modal-answer-group">
+                    <label class="form-label">Correct Answer *</label>
+                    <input type="text" name="correct_answer" class="form-input" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Explanation (optional)</label>
+                    <textarea name="explanation" class="form-input form-textarea"
+                        placeholder="Explain the correct answer..."></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Points</label>
+                    <input type="number" name="points" class="form-input" value="10" min="1" max="100">
+                </div>
+
+                <button type="submit" class="btn btn-primary w-full">Add Question</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Question Modal -->
+    <div class="modal-overlay" id="edit-question-modal">
+        <div class="modal" style="max-width: 600px;">
+            <div class="modal-header">
+                <h3 class="modal-title">Edit Question</h3>
+                <button class="modal-close" onclick="hideModal('edit-question-modal')">×</button>
+            </div>
+
+            <form id="edit-question-form">
+                <input type="hidden" name="question_id" id="edit-question-id">
+
+                <div class="form-group">
+                    <label class="form-label">Question *</label>
+                    <textarea name="question_text" id="edit-question-text" class="form-input form-textarea"
+                        required></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Correct Answer *</label>
+                    <input type="text" name="correct_answer" id="edit-correct-answer" class="form-input" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Explanation</label>
+                    <textarea name="explanation" id="edit-explanation" class="form-input form-textarea"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Points</label>
+                    <input type="number" name="points" id="edit-points" class="form-input" min="1" max="100">
+                </div>
+
+                <button type="submit" class="btn btn-primary w-full">Update Question</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Create Quiz Modal -->
+    <div class="modal-overlay" id="create-quiz-modal">
+        <div class="modal" style="max-width: 500px;">
+            <div class="modal-header">
+                <h3 class="modal-title">Create New Quiz</h3>
+                <button class="modal-close" onclick="hideModal('create-quiz-modal')">×</button>
+            </div>
+
+            <form id="create-quiz-form">
+                <div class="form-group">
+                    <label class="form-label">Quiz Title *</label>
+                    <input type="text" name="title" class="form-input" placeholder="e.g., Math Quiz Chapter 5" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Category *</label>
+                    <select name="category_id" class="form-input form-select" id="quiz-category" required>
+                        <option value="">Select category</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Difficulty</label>
+                    <select name="difficulty" class="form-input form-select">
+                        <option value="easy">Easy</option>
+                        <option value="medium" selected>Medium</option>
+                        <option value="hard">Hard</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <textarea name="description" class="form-input form-textarea"
+                        placeholder="Brief description..."></textarea>
+                </div>
+
+                <button type="submit" class="btn btn-primary w-full">Create Quiz</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="toast-container" class="toast-container"></div>
+
+    <script src="/static/js/app.js"></script>
+    <script src="/static/js/auth.js"></script>
+    <script>
+        let allQuestions = [];
+
+        async function init() {
+            const user = await getCurrentUser();
+            if (!user || !['teacher', 'admin'].includes(user.role)) {
+                window.location.href = '/server/login';
+                return;
+            }
+
+            await loadQuizzes();
+            loadQuestions();
+        }
+
+        async function loadQuizzes() {
+            try {
+                const result = await api.get('/quiz/my-quizzes');
+                const filterSelect = document.getElementById('filter-quiz');
+                const modalSelect = document.getElementById('modal-quiz-select');
+
+                result.quizzes.forEach(quiz => {
+                    filterSelect.insertAdjacentHTML('beforeend',
+                        `<option value="${quiz.id}">${escapeHtml(quiz.title)}</option>`);
+                    modalSelect.insertAdjacentHTML('beforeend',
+                        `<option value="${quiz.id}">${escapeHtml(quiz.title)}</option>`);
+                });
+
+                // Load categories for quiz creation
+                const catResult = await api.get('/quiz/categories');
+                const catSelect = document.getElementById('quiz-category');
+                if (catResult.categories) {
+                    catResult.categories.forEach(cat => {
+                        catSelect.insertAdjacentHTML('beforeend',
+                            `<option value="${cat.id}">${cat.icon} ${escapeHtml(cat.name)}</option>`);
+                    });
+                }
+            } catch (error) {
+                console.error('Failed to load quizzes:', error);
+            }
+        }
+
+        async function loadQuestions() {
+            const quizId = document.getElementById('filter-quiz').value;
+            const type = document.getElementById('filter-type').value;
+
+            try {
+                let url = '/questions/all?include_answers=true';
+                if (quizId) url += `&quiz_id=${quizId}`;
+                if (type) url += `&type=${type}`;
+
+                const result = await api.get(url);
+                allQuestions = result.questions || [];
+
+                updateStats();
+                renderQuestions(allQuestions);
+            } catch (error) {
+                showToast('Failed to load questions', 'error');
+            }
+        }
+
+        function updateStats() {
+            const mcq = allQuestions.filter(q => q.type === 'mcq').length;
+            const tf = allQuestions.filter(q => q.type === 'truefalse').length;
+            const short = allQuestions.filter(q => q.type === 'short').length;
+
+            document.getElementById('stat-total').textContent = allQuestions.length;
+            document.getElementById('stat-mcq').textContent = mcq;
+            document.getElementById('stat-tf').textContent = tf;
+            document.getElementById('stat-short').textContent = short;
+            document.getElementById('question-count').textContent = `${allQuestions.length} questions`;
+        }
+
+        function renderQuestions(questions) {
+            const container = document.getElementById('questions-list');
+
+            if (questions.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center p-xl">
+                        <div style="font-size: 3rem;">📝</div>
+                        <p class="opacity-75 mt-lg">No questions found</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = questions.map((q, i) => `
+                <div class="flex items-center gap-lg p-lg" style="border-bottom: 1px solid rgba(255,255,255,0.1);">
+                    <div class="badge badge-glass">${i + 1}</div>
+                    <div class="flex-1">
+                        <p><strong>${escapeHtml(q.question_text)}</strong></p>
+                        <div class="flex gap-md mt-sm flex-wrap">
+                            <span class="badge badge-${q.type === 'mcq' ? 'primary' : q.type === 'truefalse' ? 'secondary' : 'warning'}">
+                                ${q.type}
+                            </span>
+                            <span class="opacity-75">Answer: ${escapeHtml(q.correct_answer)}</span>
+                            <span class="opacity-75">${q.points} pts</span>
+                            <span class="opacity-50">${escapeHtml(q.quiz_title || 'Unknown Quiz')}</span>
+                        </div>
+                    </div>
+                    <div class="flex gap-sm">
+                        <button class="btn btn-glass btn-sm" onclick="editQuestion(${q.id})">Edit</button>
+                        <button class="btn btn-danger btn-sm" onclick="deleteQuestion(${q.id})">Delete</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function filterQuestions() {
+            const search = document.getElementById('search-input').value.toLowerCase();
+            const filtered = allQuestions.filter(q =>
+                q.question_text.toLowerCase().includes(search) ||
+                q.correct_answer.toLowerCase().includes(search)
+            );
+            renderQuestions(filtered);
+        }
+
+        function clearFilters() {
+            document.getElementById('filter-quiz').value = '';
+            document.getElementById('filter-type').value = '';
+            document.getElementById('search-input').value = '';
+            loadQuestions();
+        }
+
+        function updateModalOptions() {
+            const type = document.getElementById('modal-type').value;
+            const optionsContainer = document.getElementById('modal-options-container');
+            const answerGroup = document.getElementById('modal-answer-group');
+
+            if (type === 'mcq') {
+                optionsContainer.innerHTML = `
+                    <div class="form-group">
+                        <label class="form-label">Options (one per line) *</label>
+                        <textarea id="modal-options" class="form-input form-textarea" 
+                                  placeholder="Option A&#10;Option B&#10;Option C&#10;Option D" rows="4"></textarea>
+                    </div>
+                `;
+                answerGroup.innerHTML = `
+                    <label class="form-label">Correct Answer *</label>
+                    <input type="text" name="correct_answer" class="form-input" placeholder="Enter the correct option text" required>
+                `;
+            } else if (type === 'truefalse') {
+                optionsContainer.innerHTML = '';
+                answerGroup.innerHTML = `
+                    <label class="form-label">Correct Answer *</label>
+                    <select name="correct_answer" class="form-input form-select" required>
+                        <option value="true">True</option>
+                        <option value="false">False</option>
+                    </select>
+                `;
+            } else {
+                optionsContainer.innerHTML = '';
+                answerGroup.innerHTML = `
+                    <label class="form-label">Correct Answer *</label>
+                    <input type="text" name="correct_answer" class="form-input" placeholder="Enter the correct answer" required>
+                `;
+            }
+        }
+
+        // Add question form
+        document.getElementById('add-question-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const type = document.getElementById('modal-type').value;
+            const quizId = document.querySelector('[name="quiz_id"]').value;
+            const questionText = e.target.querySelector('[name="question_text"]').value;
+            const correctAnswer = e.target.querySelector('[name="correct_answer"]').value;
+            const explanation = e.target.querySelector('[name="explanation"]').value;
+            const points = parseInt(e.target.querySelector('[name="points"]').value);
+
+            let options = [];
+            if (type === 'mcq') {
+                const optionsText = document.getElementById('modal-options').value;
+                options = optionsText.split('\n').filter(o => o.trim());
+            } else if (type === 'truefalse') {
+                options = ['True', 'False'];
+            }
+
+            try {
+                await api.post('/questions/add', {
+                    quiz_id: quizId,
+                    type,
+                    question_text: questionText,
+                    options,
+                    correct_answer: correctAnswer,
+                    explanation,
+                    points
+                });
+
+                showToast('Question added!', 'success');
+                hideModal('add-question-modal');
+                e.target.reset();
+                loadQuestions();
+            } catch (error) {
+                showToast(error.message || 'Failed to add question', 'error');
+            }
+        });
+
+        function editQuestion(questionId) {
+            const question = allQuestions.find(q => q.id === questionId);
+            if (!question) return;
+
+            document.getElementById('edit-question-id').value = question.id;
+            document.getElementById('edit-question-text').value = question.question_text;
+            document.getElementById('edit-correct-answer').value = question.correct_answer;
+            document.getElementById('edit-explanation').value = question.explanation || '';
+            document.getElementById('edit-points').value = question.points;
+
+            showModal('edit-question-modal');
+        }
+
+        // Edit question form
+        document.getElementById('edit-question-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const questionId = document.getElementById('edit-question-id').value;
+            const data = {
+                question_text: document.getElementById('edit-question-text').value,
+                correct_answer: document.getElementById('edit-correct-answer').value,
+                explanation: document.getElementById('edit-explanation').value,
+                points: parseInt(document.getElementById('edit-points').value)
+            };
+
+            try {
+                await api.put(`/questions/update/${questionId}`, data);
+                showToast('Question updated!', 'success');
+                hideModal('edit-question-modal');
+                loadQuestions();
+            } catch (error) {
+                showToast(error.message || 'Failed to update question', 'error');
+            }
+        });
+
+        async function deleteQuestion(questionId) {
+            if (!confirm('Delete this question?')) return;
+
+            try {
+                await api.delete(`/questions/delete/${questionId}`);
+                showToast('Question deleted', 'success');
+                loadQuestions();
+            } catch (error) {
+                showToast(error.message || 'Failed to delete question', 'error');
+            }
+        }
+
+        // Create quiz form
+        document.getElementById('create-quiz-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const formData = new FormData(e.target);
+            const data = {
+                title: formData.get('title'),
+                category_id: parseInt(formData.get('category_id')),
+                difficulty: formData.get('difficulty'),
+                description: formData.get('description') || ''
+            };
+
+            try {
+                const result = await api.post('/quiz/create', data);
+                if (result.success) {
+                    showToast('Quiz created successfully!', 'success');
+                    hideModal('create-quiz-modal');
+                    e.target.reset();
+
+                    // Refresh quiz dropdowns
+                    const filterSelect = document.getElementById('filter-quiz');
+                    const modalSelect = document.getElementById('modal-quiz-select');
+                    filterSelect.insertAdjacentHTML('beforeend',
+                        `<option value="${result.quiz_id}">${escapeHtml(data.title)}</option>`);
+                    modalSelect.insertAdjacentHTML('beforeend',
+                        `<option value="${result.quiz_id}">${escapeHtml(data.title)}</option>`);
+                }
+            } catch (error) {
+                showToast(error.message || 'Failed to create quiz', 'error');
+            }
+        });
+
+        init();
+    </script>
+</body>
+
+</html>

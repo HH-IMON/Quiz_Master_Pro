@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Quiz Master Pro - The ultimate interactive quiz platform for learning and fun">
+    <title>Quiz Master Pro - Interactive Learning Platform</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Outfit:wght@700;800;900&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: var(--spacing-2xl);
+        }
+
+        .hero-content {
+            max-width: 800px;
+        }
+
+        .hero-title {
+            font-family: var(--font-display);
+            font-size: 4rem;
+            font-weight: 900;
+            margin-bottom: var(--spacing-lg);
+            line-height: 1.1;
+        }
+
+        .hero-subtitle {
+            font-size: 1.25rem;
+            color: var(--text-secondary);
+            margin-bottom: var(--spacing-2xl);
+            line-height: 1.6;
+        }
+
+        .hero-buttons {
+            display: flex;
+            gap: var(--spacing-lg);
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .portal-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: var(--spacing-xl);
+            margin-top: var(--spacing-2xl);
+        }
+
+        .portal-card {
+            padding: var(--spacing-2xl);
+            text-align: center;
+            cursor: pointer;
+            transition: all var(--transition-normal);
+        }
+
+        .portal-card:hover {
+            transform: translateY(-10px) scale(1.02);
+        }
+
+        .portal-icon {
+            font-size: 4rem;
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .portal-title {
+            font-size: 1.5rem;
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .features {
+            padding: var(--spacing-2xl);
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: var(--spacing-xl);
+        }
+
+        .feature-card {
+            padding: var(--spacing-xl);
+            text-align: center;
+        }
+
+        .feature-icon {
+            font-size: 3rem;
+            margin-bottom: var(--spacing-md);
+        }
+
+        .feature-title {
+            font-size: 1.25rem;
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .feature-desc {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        @media (max-width: 768px) {
+            .hero-title {
+                font-size: 2.5rem;
+            }
+
+            .hero-subtitle {
+                font-size: 1rem;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="animated-bg"></div>
+    <div class="particles"></div>
+
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="navbar-content">
+            <a href="/" class="navbar-brand">
+                <span class="logo">🧠</span>
+                <span>Quiz Master Pro</span>
+            </a>
+            <ul class="navbar-nav">
+                <li><a href="#features" class="nav-link">Features</a></li>
+                <li><a href="/client/login" class="btn btn-glass btn-sm">Student Login</a></li>
+                <li><a href="/server/login" class="btn btn-primary btn-sm">Teacher/Admin</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-content animate-fade-in">
+            <h1 class="hero-title">
+                <span class="gradient-text">Learn, Play, Win!</span>
+            </h1>
+            <p class="hero-subtitle">
+                Experience the future of interactive learning with real-time quizzes,
+                exciting battles, and a vibrant community. Join thousands of learners
+                mastering new skills every day!
+            </p>
+
+            <div class="portal-cards">
+                <a href="/client/login" class="glass-card portal-card">
+                    <div class="portal-icon">🎓</div>
+                    <h3 class="portal-title">Student Portal</h3>
+                    <p class="opacity-75">Join quizzes, practice, battle with friends, and climb the leaderboard!</p>
+                    <span class="btn btn-secondary mt-lg">Enter as Student</span>
+                </a>
+
+                <a href="/server/login" class="glass-card portal-card">
+                    <div class="portal-icon">📊</div>
+                    <h3 class="portal-title">Teacher/Admin Portal</h3>
+                    <p class="opacity-75">Create quizzes, manage questions, host live games, and track analytics!</p>
+                    <span class="btn btn-primary mt-lg">Enter as Teacher</span>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section id="features" class="features">
+        <h2 class="text-center mb-xl gradient-text">Amazing Features</h2>
+
+        <div class="features-grid">
+            <div class="glass-card feature-card">
+                <div class="feature-icon">🎮</div>
+                <h3 class="feature-title">Live Quiz Games</h3>
+                <p class="feature-desc">Kahoot-style real-time quizzes with live leaderboards and exciting competition!
+                </p>
+            </div>
+
+            <div class="glass-card feature-card">
+                <div class="feature-icon">📚</div>
+                <h3 class="feature-title">Practice Mode</h3>
+                <p class="feature-desc">Learn at your own pace with unlimited practice and detailed explanations.</p>
+            </div>
+
+            <div class="glass-card feature-card">
+                <div class="feature-icon">⚔️</div>
+                <h3 class="feature-title">Battle Mode</h3>
+                <p class="feature-desc">Challenge friends to 1v1 battles or team competitions!</p>
+            </div>
+
+            <div class="glass-card feature-card">
+                <div class="feature-icon">💬</div>
+                <h3 class="feature-title">Study Chat</h3>
+                <p class="feature-desc">Discuss questions and help each other in real-time chat rooms.</p>
+            </div>
+
+            <div class="glass-card feature-card">
+                <div class="feature-icon">🏆</div>
+                <h3 class="feature-title">Levels & Ranks</h3>
+                <p class="feature-desc">Earn XP, level up, and unlock badges as you learn!</p>
+            </div>
+
+            <div class="glass-card feature-card">
+                <div class="feature-icon">📈</div>
+                <h3 class="feature-title">Track Progress</h3>
+                <p class="feature-desc">See your growth with detailed statistics and analytics.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="text-center p-xl opacity-75">
+        <p>© 2026 Quiz Master Pro. Made with ❤️ for learners everywhere.</p>
+    </footer>
+
+    <script src="/static/js/app.js"></script>
+</body>
+
+</html>

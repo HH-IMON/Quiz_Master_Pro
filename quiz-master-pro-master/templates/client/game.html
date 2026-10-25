@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Quiz Game - Quiz Master Pro</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Outfit:wght@700;800;900&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/css/game.css">
+    <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
+</head>
+
+<body>
+    <div class="animated-bg"></div>
+    <div class="particles"></div>
+
+    <div class="game-container" id="game-container">
+        <!-- Initial Join Screen -->
+        <div class="waiting-room">
+            <h1 class="gradient-text">🎮 Join a Quiz</h1>
+            <p class="opacity-75 mb-xl">Enter the room code from your teacher</p>
+
+            <div class="glass-card" style="max-width: 500px; margin: 0 auto;">
+                <div class="form-group">
+                    <label class="form-label">Room Code</label>
+                    <input type="text" id="room-code-input" class="form-input" placeholder="ABCDEF" maxlength="6"
+                        style="text-transform: uppercase; text-align: center; font-size: 2rem; letter-spacing: 8px;">
+                </div>
+
+                <button class="btn btn-primary btn-lg w-full" onclick="joinGame()">
+                    Join Game 🚀
+                </button>
+            </div>
+
+            <a href="/client/home" class="btn btn-glass mt-xl">
+                ← Back to Home
+            </a>
+        </div>
+    </div>
+
+    <div id="toast-container" class="toast-container"></div>
+
+    <script>
+        // Pass room code to JS if provided
+        window.ROOM_CODE = "{{ room_code or '' }}";
+    </script>
+    <script src="/static/js/app.js"></script>
+    <script src="/static/js/auth.js"></script>
+    <script src="/static/js/client/game.js"></script>
+</body>
+
+</html>

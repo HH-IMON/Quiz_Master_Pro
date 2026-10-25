@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz Master Pro - System Diagrams</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #fff;
+            min-height: 100vh;
+            padding: 40px;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 2.5rem;
+            margin-bottom: 40px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        h2 {
+            color: #667eea;
+            margin: 40px 0 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+        }
+
+        .diagram-container {
+            background: #ffffff;
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 40px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            overflow-x: auto;
+        }
+
+        .mermaid {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #ffffff;
+            border-radius: 10px;
+            padding: 30px;
+            min-height: 400px;
+        }
+
+        .mermaid svg {
+            max-width: 100%;
+            height: auto;
+        }
+
+        .legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-top: 15px;
+            padding: 15px;
+            background: #f5f5f5;
+            border-radius: 10px;
+            color: #333;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .legend-color {
+            width: 24px;
+            height: 24px;
+            border: 2px solid #333;
+        }
+
+        .legend-color.rectangle {
+            border-radius: 0;
+        }
+
+        .legend-color.rounded {
+            border-radius: 12px;
+        }
+
+        .legend-color.circle {
+            border-radius: 50%;
+        }
+
+        .legend-color.diamond {
+            transform: rotate(45deg);
+            width: 18px;
+            height: 18px;
+        }
+
+        .legend-color.cylinder {
+            border-radius: 4px;
+            position: relative;
+        }
+
+        .legend-color.parallelogram {
+            transform: skewX(-15deg);
+        }
+
+        @media print {
+            body {
+                background: white;
+                color: black;
+            }
+
+            .diagram-container {
+                break-inside: avoid;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <h1>🧠 Quiz Master Pro - System Diagrams</h1>
+
+    <!-- 1. High-Level Architecture -->
+    <h2>1. High-Level Architecture Diagram</h2>
+    <div class="diagram-container">
+        <pre class="mermaid">
+%%{init: {'theme': 'neutral'}}%%
+flowchart TB
+    subgraph CLIENT["CLIENT LAYER"]
+        direction LR
+        WB[/"🌐 Web Browser"/]
+    end
+
+    subgraph PRESENTATION["PRESENTATION LAYER"]
+        direction LR
+        HTML["📄 HTML Templates"]
+        CSS["🎨 CSS Styles"]
+        JS["⚡ JavaScript"]
+    end
+
+    subgraph APPLICATION["APPLICATION LAYER"]
+        direction TB
+        subgraph CORE["Core Framework"]
+            FLASK["🐍 Flask App"]
+            SOCKETIO["🔌 Flask-SocketIO"]
+        end
+        subgraph BLUEPRINTS["API Blueprints"]
+            direction LR
+            AUTH["auth.py"]
+            QUIZ["quiz.py"]
+            GAME["game.py"]
+            PRACTICE["practice.py"]
+            BATTLE["battle.py"]
+            CHAT["chat.py"]
+            ADMIN["admin.py"]
+            EXAM["exam.py"]
+        end
+    end
+
+    subgraph DATA["DATA LAYER"]
+        direction LR
+        MYSQL[("💾 MySQL Database")]
+    end
+
+    CLIENT --> PRESENTATION
+    PRESENTATION --> APPLICATION
+    APPLICATION --> DATA
+    CORE --> BLUEPRINTS
+        </pre>
+        <div class="legend">
+            <div class="legend-item">
+                <div class="legend-color parallelogram" style="background: #e3f2fd;"></div>
+                <span>Input/Output</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color rectangle" style="background: #fff3e0;"></div>
+                <span>Process</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color cylinder" style="background: #e8f5e9;"></div>
+                <span>Database</span>
+            </div>
+            <div class="legend-item">
+                <span>→ Data Flow</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. Data Flow Diagram Level 0 -->
+    <h2>2. Data Flow Diagram (Level 0 - Context)</h2>
+    <div class="diagram-container">
+        <pre class="mermaid">
+%%{init: {'theme': 'neutral'}}%%
+flowchart LR
+    %% External Entities - Rectangles with double border
+    STUDENT["👨‍🎓 Student"]
+    TEACHER["👨‍🏫 Teacher"]
+    ADMIN["🔧 Admin"]
+
+    %% Process - Circle (DFD standard)
+    SYSTEM(("Quiz Master Pro\nSystem"))
+
+    %% Data Store - Open-ended rectangle (using cylinder as approximation)
+    DB[("MySQL\nDatabase")]
+
+    %% Data Flows with labels
+    STUDENT -->|"Register, Login,\nSubmit Answers,\nJoin Games"| SYSTEM
+    SYSTEM -->|"Questions, Scores,\nLeaderboard, XP"| STUDENT
+
+    TEACHER -->|"Create Quizzes,\nHost Games,\nSchedule Exams"| SYSTEM
+    SYSTEM -->|"Analytics, Reports,\nGame Status"| TEACHER
+
+    ADMIN -->|"Manage Users,\nManage Categories"| SYSTEM
+    SYSTEM -->|"System Stats,\nUser Lists"| ADMIN
+
+    SYSTEM <-->|"Store/Retrieve\nData"| DB
+        </pre>
+        <div class="legend">
+            <div class="legend-item">
+                <div class="legend-color rectangle" style="background: #e3f2fd;"></div>
+                <span>External Entity</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color circle" style="background: #fff3e0;"></div>
+                <span>Process</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color cylinder" style="background: #e8f5e9;"></div>
+                <span>Data Store</span>
+            </div>
+            <div class="legend-item">
+                <span>→ Data Flow</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. Data Flow Diagram Level 1 -->
+    <h2>3. Data Flow Diagram (Level 1 - Detailed)</h2>
+    <div class="diagram-container">
+        <pre class="mermaid">
+%%{init: {'theme': 'neutral'}}%%
+flowchart TB
+    %% External Entities
+    STUDENT["👨‍🎓 Student"]
+    TEACHER["👨‍🏫 Teacher"]
+    
+    subgraph PROCESSES["System Processes"]
+        %% Processes - Circles
+        P1(("1.0\nAuth"))
+        P2(("2.0\nQuiz\nMgmt"))
+        P3(("3.0\nLive\nGame"))
+        P4(("4.0\nPractice"))
+        P5(("5.0\nBattle"))
+        P6(("6.0\nExam"))
+    end
+
+    %% Data Stores - Cylinders
+    D1[("D1: Users")]
+    D2[("D2: Quizzes")]
+    D3[("D3: Questions")]
+    D4[("D4: Game Rooms")]
+    D5[("D5: Results")]
+
+    %% Authentication flows
+    STUDENT -->|"Credentials"| P1
+    P1 -->|"Auth Token"| STUDENT
+    P1 <-->|"User Data"| D1
+
+    %% Quiz Management flows
+    TEACHER -->|"Quiz Details"| P2
+    P2 -->|"Quiz Created"| TEACHER
+    P2 <-->|"Quiz Data"| D2
+    P2 <-->|"Questions"| D3
+
+    %% Live Game flows
+    STUDENT -->|"Room Code"| P3
+    TEACHER -->|"Start Game"| P3
+    P3 -->|"Live Updates"| STUDENT
+    P3 <-->|"Game State"| D4
+    P3 -->|"Scores"| D5
+
+    %% Practice flows
+    STUDENT -->|"Category"| P4
+    P4 -->|"Questions"| STUDENT
+    P4 <-->|"Questions"| D3
+
+    %% Battle flows
+    STUDENT -->|"Challenge"| P5
+    P5 -->|"Updates"| STUDENT
+    P5 <-->|"Match Data"| D5
+
+    %% Exam flows
+    STUDENT -->|"Answers"| P6
+    TEACHER -->|"Schedule"| P6
+    P6 -->|"Results"| STUDENT
+    P6 <-->|"Exam Data"| D2
+        </pre>
+    </div>
+
+    <!-- 4. Use Case Diagram -->
+    <h2>4. Use Case Diagram</h2>
+    <div class="diagram-container">
+        <pre class="mermaid">
+%%{init: {'theme': 'neutral'}}%%
+flowchart LR
+    %% Actors - Stick figures using SVG in HTML labels
+    subgraph ACTORS[" "]
+        direction TB
+        STUDENT["<div style='text-align:center;'><svg width='40' height='60' viewBox='0 0 40 60' style='margin-bottom:5px;'><circle cx='20' cy='10' r='8' stroke='#333' fill='none' stroke-width='2'/><line x1='20' y1='18' x2='20' y2='40' stroke='#333' stroke-width='2'/><line x1='20' y1='22' x2='5' y2='30' stroke='#333' stroke-width='2'/><line x1='20' y1='22' x2='35' y2='30' stroke='#333' stroke-width='2'/><line x1='20' y1='40' x2='5' y2='55' stroke='#333' stroke-width='2'/><line x1='20' y1='40' x2='35' y2='55' stroke='#333' stroke-width='2'/></svg><br>Student</div>"]
+        TEACHER["<div style='text-align:center;'><svg width='40' height='60' viewBox='0 0 40 60' style='margin-bottom:5px;'><circle cx='20' cy='10' r='8' stroke='#333' fill='none' stroke-width='2'/><line x1='20' y1='18' x2='20' y2='40' stroke='#333' stroke-width='2'/><line x1='20' y1='22' x2='5' y2='30' stroke='#333' stroke-width='2'/><line x1='20' y1='22' x2='35' y2='30' stroke='#333' stroke-width='2'/><line x1='20' y1='40' x2='5' y2='55' stroke='#333' stroke-width='2'/><line x1='20' y1='40' x2='35' y2='55' stroke='#333' stroke-width='2'/></svg><br>Teacher</div>"]
+        ADMIN["<div style='text-align:center;'><svg width='40' height='60' viewBox='0 0 40 60' style='margin-bottom:5px;'><circle cx='20' cy='10' r='8' stroke='#333' fill='none' stroke-width='2'/><line x1='20' y1='18' x2='20' y2='40' stroke='#333' stroke-width='2'/><line x1='20' y1='22' x2='5' y2='30' stroke='#333' stroke-width='2'/><line x1='20' y1='22' x2='35' y2='30' stroke='#333' stroke-width='2'/><line x1='20' y1='40' x2='5' y2='55' stroke='#333' stroke-width='2'/><line x1='20' y1='40' x2='35' y2='55' stroke='#333' stroke-width='2'/></svg><br>Admin</div>"]
+    end
+
+    subgraph SYSTEM["Quiz Master Pro System"]
+        direction TB
+        
+        subgraph AUTH["Authentication"]
+            UC1(["Register"])
+            UC2(["Login"])
+            UC3(["View Profile"])
+        end
+
+        subgraph STUDENT_UC["Student Features"]
+            UC4(["Join Live Quiz"])
+            UC5(["Practice Mode"])
+            UC6(["1v1 Battle"])
+            UC7(["Take Exam"])
+            UC8(["View Leaderboard"])
+            UC9(["Chat Room"])
+        end
+
+        subgraph TEACHER_UC["Teacher Features"]
+            UC10(["Create Quiz"])
+            UC11(["Question Bank"])
+            UC12(["Host Live Game"])
+            UC13(["Schedule Exams"])
+            UC14(["View Analytics"])
+        end
+
+        subgraph ADMIN_UC["Admin Features"]
+            UC15(["Manage Users"])
+            UC16(["Manage Categories"])
+            UC17(["System Analytics"])
+        end
+    end
+
+    %% Student associations
+    STUDENT --- UC1
+    STUDENT --- UC2
+    STUDENT --- UC3
+    STUDENT --- UC4
+    STUDENT --- UC5
+    STUDENT --- UC6
+    STUDENT --- UC7
+    STUDENT --- UC8
+    STUDENT --- UC9
+
+    %% Teacher associations
+    TEACHER --- UC1
+    TEACHER --- UC10
+    TEACHER --- UC11
+    TEACHER --- UC12
+    TEACHER --- UC13
+    TEACHER --- UC14
+
+    %% Admin associations
+    ADMIN --- UC1
+    ADMIN --- UC15
+    ADMIN --- UC16
+    ADMIN --- UC17
+
+    %% Include/Extend Relationships
+    UC2 -.->|&lt;&lt;include&gt;&gt;| UC_VAL([Validate Code])
+    UC1 -.->|&lt;&lt;include&gt;&gt;| UC_AUTH([Authenticate])
+    UC5 -.->|&lt;&lt;extend&gt;&gt;| UC14
+    UC12 -.->|&lt;&lt;include&gt;&gt;| UC10
+        </pre>
+        <div class="legend">
+            <div class="legend-item">
+                <svg width="20" height="30" viewBox="0 0 40 60" style="vertical-align: middle;">
+                    <circle cx="20" cy="10" r="8" stroke="#333" fill="none" stroke-width="4" />
+                    <line x1="20" y1="18" x2="20" y2="40" stroke="#333" stroke-width="4" />
+                    <line x1="20" y1="22" x2="5" y2="30" stroke="#333" stroke-width="4" />
+                    <line x1="20" y1="22" x2="35" y2="30" stroke="#333" stroke-width="4" />
+                    <line x1="20" y1="40" x2="5" y2="55" stroke="#333" stroke-width="4" />
+                    <line x1="20" y1="40" x2="35" y2="55" stroke="#333" stroke-width="4" />
+                </svg>
+                <span>Actor</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color rounded" style="background: #e3f2fd;"></div>
+                <span>Use Case (Ellipse)</span>
+            </div>
+            <div class="legend-item">
+                <span>― Association</span>
+            </div>
+            <div class="legend-item">
+                <span style="border-bottom: 2px dashed #333; height: 12px; display: inline-block; width: 30px;"></span>
+                <span>Include/Extend</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 5. Sequence Diagram -->
+    <h2>5. Sequence Diagram - Live Quiz Game Flow</h2>
+    <div class="diagram-container">
+        <pre class="mermaid">
+%%{init: {'theme': 'neutral'}}%%
+sequenceDiagram
+    autonumber
+    
+    actor Student as Student
+    participant Browser as Browser
+    participant WebSocket as WebSocket Server
+    participant DB as Database
+    actor Host as Host/Teacher
+
+    rect rgb(240, 248, 255)
+        Note over Host,DB: Game Setup Phase
+        Host->>WebSocket: Create game room
+        WebSocket->>DB: Store room (room_code, quiz_id)
+        WebSocket-->>Host: Room code generated
+    end
+
+    rect rgb(255, 248, 240)
+        Note over Student,DB: Join Phase
+        Student->>Browser: Enter room code
+        Browser->>WebSocket: emit("join_game", room_code)
+        WebSocket->>DB: Verify room exists
+        
+        alt Room Exists
+            DB-->>WebSocket: Room details
+            WebSocket->>DB: Add participant
+            WebSocket-->>Browser: emit("player_joined")
+            WebSocket-->>Host: emit("player_list_updated")
+        else Room Not Found
+            DB-->>WebSocket: Error (Not Found)
+            WebSocket-->>Browser: emit("error", "Invalid Room")
+            Browser-->>Student: Show Error Message
+        end
+    end
+
+    rect rgb(240, 255, 240)
+        Note over Host,DB: Game Start
+        Host->>WebSocket: emit("start_game")
+        WebSocket-->>Browser: emit("game_started")
+    end
+
+    loop For Each Question
+        rect rgb(255, 255, 240)
+            Note over Student,DB: Question Round
+            WebSocket->>Browser: emit("new_question", data)
+            Browser->>Student: Display question + timer
+            Student->>Browser: Select answer
+            Browser->>WebSocket: emit("submit_answer", answer)
+            WebSocket->>WebSocket: Calculate score (time bonus)
+            WebSocket->>DB: Save response
+            WebSocket-->>Browser: emit("answer_result")
+            WebSocket-->>Host: emit("leaderboard_update")
+        end
+    end
+
+    rect rgb(240, 240, 255)
+        Note over Student,DB: Game End
+        WebSocket->>DB: Update XP, save final scores
+        WebSocket-->>Browser: emit("game_ended", results)
+        WebSocket-->>Host: emit("final_results")
+    end
+        </pre>
+        <div class="legend">
+            <div class="legend-item">
+                <span>🧑</span>
+                <span>Actor/Lifeline</span>
+            </div>
+            <div class="legend-item">
+                <span>→ Sync Message</span>
+            </div>
+            <div class="legend-item">
+                <span>--→ Async/Return</span>
+            </div>
+            <div class="legend-item">
+                <span>█ Activation Box</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 6. ER Diagram -->
+    <h2>6. Database Entity Relationship Diagram</h2>
+    <div class="diagram-container">
+        <pre class="mermaid">
+%%{init: {'theme': 'neutral'}}%%
+erDiagram
+    USERS {
+        int id PK "Primary Key"
+        varchar username UK "Unique"
+        varchar email UK "Unique"
+        varchar password_hash
+        enum role "student/teacher/admin"
+        int xp_points
+        int level
+        datetime created_at
+    }
+
+    CATEGORIES {
+        int id PK
+        varchar name
+        text description
+        varchar icon
+    }
+
+    QUIZZES {
+        int id PK
+        varchar title
+        int category_id FK
+        int created_by FK
+        enum difficulty "easy/medium/hard"
+        boolean is_public
+        datetime created_at
+    }
+
+    QUESTIONS {
+        int id PK
+        int quiz_id FK
+        enum type "mcq/true_false/short"
+        text question_text
+        json options
+        varchar correct_answer
+        int points
+    }
+
+    GAME_ROOMS {
+        int id PK
+        varchar room_code UK
+        int quiz_id FK
+        int host_id FK
+        enum status "waiting/active/finished"
+        int current_question
+        datetime created_at
+    }
+
+    GAME_PARTICIPANTS {
+        int id PK
+        int room_id FK
+        int user_id FK
+        int score
+        int streak
+        int correct_count
+    }
+
+    EXAMS {
+        int id PK
+        varchar title
+        int quiz_id FK
+        int created_by FK
+        datetime start_time
+        datetime end_time
+        int duration_minutes
+    }
+
+    EXAM_SUBMISSIONS {
+        int id PK
+        int exam_id FK
+        int user_id FK
+        json answers
+        int score
+        datetime submitted_at
+    }
+
+    BATTLE_MATCHES {
+        int id PK
+        int player1_id FK
+        int player2_id FK
+        int player1_score
+        int player2_score
+        int winner_id FK
+        enum status "pending/active/finished"
+    }
+
+    CHAT_MESSAGES {
+        int id PK
+        int room_id FK
+        int sender_id FK
+        text message
+        datetime created_at
+    }
+
+    PRACTICE_PROGRESS {
+        int id PK
+        int user_id FK
+        int category_id FK
+        int questions_attempted
+        int correct_answers
+    }
+
+    QUIZ_RESULTS {
+        int id PK
+        int user_id FK
+        int quiz_id FK
+        int score
+        int time_taken
+        datetime completed_at
+    }
+
+    %% Relationships
+    USERS ||--o{ QUIZZES : "creates"
+    USERS ||--o{ GAME_ROOMS : "hosts"
+    USERS ||--o{ GAME_PARTICIPANTS : "joins"
+    USERS ||--o{ EXAM_SUBMISSIONS : "submits"
+    USERS ||--o{ BATTLE_MATCHES : "plays"
+    USERS ||--o{ CHAT_MESSAGES : "sends"
+    USERS ||--o{ PRACTICE_PROGRESS : "tracks"
+    USERS ||--o{ QUIZ_RESULTS : "achieves"
+    
+    CATEGORIES ||--o{ QUIZZES : "contains"
+    CATEGORIES ||--o{ PRACTICE_PROGRESS : "categorizes"
+    
+    QUIZZES ||--o{ QUESTIONS : "has"
+    QUIZZES ||--o{ GAME_ROOMS : "used_in"
+    QUIZZES ||--o{ EXAMS : "scheduled_as"
+    QUIZZES ||--o{ QUIZ_RESULTS : "generates"
+    
+    GAME_ROOMS ||--o{ GAME_PARTICIPANTS : "includes"
+    GAME_ROOMS ||--o{ CHAT_MESSAGES : "contains"
+    
+    EXAMS ||--o{ EXAM_SUBMISSIONS : "receives"
+        </pre>
+        <div class="legend">
+            <div class="legend-item">
+                <span>PK = Primary Key</span>
+            </div>
+            <div class="legend-item">
+                <span>FK = Foreign Key</span>
+            </div>
+            <div class="legend-item">
+                <span>UK = Unique Key</span>
+            </div>
+            <div class="legend-item">
+                <span>||--o{ = One-to-Many</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 7. State Diagram for Game Room -->
+    <h2>7. State Diagram - Game Room Lifecycle</h2>
+    <div class="diagram-container">
+        <pre class="mermaid">
+%%{init: {'theme': 'neutral'}}%%
+stateDiagram-v2
+    [*] --> Created: Host creates room
+    
+    Created --> Waiting: Room code generated
+    
+    Waiting --> Active: Host starts game (min 1 player)
+    Waiting --> Cancelled: Host cancels or timeout
+    
+    state Active {
+        [*] --> QuestionPhase
+        QuestionPhase --> AnswerCollection: Timer starts
+        AnswerCollection --> Scoring: Timer ends or all answered
+        Scoring --> LeaderboardUpdate: Calculate scores
+        LeaderboardUpdate --> QuestionPhase: Next question
+        LeaderboardUpdate --> [*]: No more questions
+    }
+    
+    Active --> GameComplete: All questions done
+    GameComplete --> Finished: Save results, update XP
+    Cancelled --> [*]
+    Finished --> [*]
+        </pre>
+        <div class="legend">
+            <div class="legend-item">
+                <div class="legend-color circle" style="background: #333; width: 12px; height: 12px;"></div>
+                <span>Initial/Final State</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color rounded" style="background: #e3f2fd;"></div>
+                <span>State</span>
+            </div>
+            <div class="legend-item">
+                <span>→ Transition</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 8. Flowchart - User Registration Process -->
+    <h2>8. Flowchart - User Registration Process</h2>
+    <div class="diagram-container">
+        <pre class="mermaid">
+%%{init: {'theme': 'neutral'}}%%
+flowchart TD
+    START(["Start"])
+    
+    INPUT[/"Enter Username,\nEmail, Password"/]
+    
+    VALIDATE{"Valid\nInput?"}
+    
+    CHECK_USER{"Username\nExists?"}
+    
+    CHECK_EMAIL{"Email\nExists?"}
+    
+    HASH["Hash Password"]
+    
+    SAVE[("Save to\nDatabase")]
+    
+    SEND_EMAIL["Send Verification\nEmail"]
+    
+    SUCCESS(["Registration\nComplete"])
+    
+    ERROR_INVALID["Show Validation\nError"]
+    
+    ERROR_USER["Show Username\nExists Error"]
+    
+    ERROR_EMAIL["Show Email\nExists Error"]
+    
+    %% Flow
+    START --> INPUT
+    INPUT --> VALIDATE
+    
+    VALIDATE -->|No| ERROR_INVALID
+    VALIDATE -->|Yes| CHECK_USER
+    
+    CHECK_USER -->|Yes| ERROR_USER
+    CHECK_USER -->|No| CHECK_EMAIL
+    
+    CHECK_EMAIL -->|Yes| ERROR_EMAIL
+    CHECK_EMAIL -->|No| HASH
+    
+    HASH --> SAVE
+    SAVE --> SEND_EMAIL
+    SEND_EMAIL --> SUCCESS
+    
+    ERROR_INVALID --> INPUT
+    ERROR_USER --> INPUT
+    ERROR_EMAIL --> INPUT
+        </pre>
+        <div class="legend">
+            <div class="legend-item">
+                <div class="legend-color rounded" style="background: #e8f5e9;"></div>
+                <span>Terminal (Start/End)</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color parallelogram" style="background: #e3f2fd;"></div>
+                <span>Input/Output</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color rectangle" style="background: #fff3e0;"></div>
+                <span>Process</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color diamond" style="background: #fce4ec;"></div>
+                <span>Decision</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color cylinder" style="background: #f3e5f5;"></div>
+                <span>Database</span>
+            </div>
+        </div>
+    </div>
+
+    <div style="text-align: center; margin-top: 40px; opacity: 0.6;">
+        <p>Quiz Master Pro - System Documentation</p>
+        <p>Generated: January 2026</p>
+        <p><em>Diagrams rendered with Mermaid.js</em></p>
+    </div>
+
+    <script>
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'default',
+            securityLevel: 'loose',
+            flowchart: {
+                useMaxWidth: false,
+                htmlLabels: true,
+                curve: 'basis',
+                padding: 20
+            },
+            sequence: {
+                useMaxWidth: false,
+                wrap: true,
+                wrapPadding: 10,
+                height: 50,
+                boxMargin: 10
+            },
+            er: {
+                useMaxWidth: false,
+                layoutDirection: 'TB',
+                minEntityWidth: 100,
+                minEntityHeight: 75
+            },
+            state: {
+                useMaxWidth: false
+            }
+        });
+    </script>
+</body>
+
+</html>

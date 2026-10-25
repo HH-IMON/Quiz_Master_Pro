@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Exams - Quiz Master Pro</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Outfit:wght@700;800;900&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+
+<body>
+    <div class="animated-bg"></div>
+    <div class="particles"></div>
+
+    <div class="container" style="padding: var(--spacing-2xl) var(--spacing-lg);">
+        <!-- Header -->
+        <header class="flex justify-between items-center mb-xl">
+            <div>
+                <a href="/client/home" class="btn btn-glass btn-sm mb-md">← Back to Home</a>
+                <h1 class="gradient-text">📋 My Exams</h1>
+                <p class="opacity-75">Take scheduled exams and view your results</p>
+            </div>
+            <div class="flex items-center gap-md">
+                <div class="avatar" id="user-avatar">👤</div>
+            </div>
+        </header>
+
+        <!-- Available Exams -->
+        <div class="glass-card mb-xl">
+            <div class="card-header">
+                <h3 class="card-title">🟢 Available Now</h3>
+            </div>
+            <div id="available-exams">
+                <p class="text-center opacity-75 p-xl">Loading...</p>
+            </div>
+        </div>
+
+        <!-- Upcoming Exams -->
+        <div class="glass-card mb-xl">
+            <div class="card-header">
+                <h3 class="card-title">⏰ Upcoming Exams</h3>
+            </div>
+            <div id="upcoming-exams">
+                <p class="text-center opacity-75 p-xl">Loading...</p>
+            </div>
+        </div>
+
+        <!-- My Results -->
+        <div class="glass-card">
+            <div class="card-header">
+                <h3 class="card-title">📊 My Results</h3>
+            </div>
+            <div id="my-results">
+                <p class="text-center opacity-75 p-xl">Loading...</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast-container" class="toast-container"></div>
+
+    <script src="/static/js/app.js"></script>
+    <script src="/static/js/auth.js"></script>
+    <script>
+        async function init() {
+            const user = await getCurrentUser();
+            if (!user) {
+                window.location.href = '/client/login';
+                return;
+            }
+
+            document.getElementById('user-avatar').textContent = getAvatarEmoji(user.avatar);
+
+            loadAvailableExams();
+            loadMyResults();
+        }
+
+        async function loadAvailableExams() {
+            try {
+                const result = await api.get('/exam/available');
+
+                renderAvailableExams(result.available || []);
+                renderUpcomingExams(result.upcoming || []);
+            } catch (error) {
+                showToast('Failed to load exams', 'error');
+            }
+        }
+
+        function renderAvailableExams(exams) {
+            const container = document.getElementById('available-exams');
+
+            if (exams.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center p-xl opacity-75">
+                        <div style="font-size: 3rem; margin-bottom: var(--spacing-md);">📭</div>
+                        <p>No exams available right now</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = `
+                <div class="grid grid-2" style="gap: var(--spacing-lg);">
+                    ${exams.map(exam => {
+                const endTime = new Date(exam.end_time);
+                const timeLeft = getTimeLeft(endTime);
+                const canTake = !exam.my_status || exam.my_status === 'in_progress';
+
+                return `
+                            <div class="glass-card" style="background: rgba(74, 222, 128, 0.1); border-color: var(--success);">
+                                <div class="flex justify-between items-start mb-md">
+                                    <div>
+                                        <h4>${escapeHtml(exam.title)}</h4>
+                                        <p class="opacity-75">${escapeHtml(exam.quiz_title || '')}</p>
+                                    </div>
+                                    <span class="badge badge-success">LIVE</span>
+                                </div>
+                                
+                                <div class="flex gap-lg mb-lg">
+                                    <div>
+                                        <small class="opacity-75">Questions</small>
+                                        <p><strong>${exam.question_count}</strong></p>
+                                    </div>
+                                    <div>
+                                        <small class="opacity-75">Duration</small>
+                                        <p><strong>${exam.duration_minutes} min</strong></p>
+                                    </div>
+                                    <div>
+                                        <small class="opacity-75">Ends in</small>
+                                        <p><strong>${timeLeft}</strong></p>
+                                    </div>
+                                </div>
+                                
+                                ${exam.my_status === 'submitted' ? `
+                                    <span class="badge badge-glass">✓ Completed</span>
+                                ` : exam.my_status === 'in_progress' ? `
+                                    <a href="/client/exam/${exam.id}" class="btn btn-warning w-full">Resume Exam →</a>
+                                ` : `
+                                    <a href="/client/exam/${exam.id}" class="btn btn-success w-full">Start Exam →</a>
+                                `}
+                            </div>
+                        `;
+            }).join('')}
+                </div>
+            `;
+        }
+
+        function renderUpcomingExams(exams) {
+            const container = document.getElementById('upcoming-exams');
+
+            if (exams.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center p-xl opacity-75">
+                        <p>No upcoming exams scheduled</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = `
+                <div class="grid grid-2" style="gap: var(--spacing-lg);">
+                    ${exams.map(exam => {
+                const startTime = new Date(exam.start_time);
+
+                return `
+                            <div class="glass-card">
+                                <div class="flex justify-between items-start mb-md">
+                                    <div>
+                                        <h4>${escapeHtml(exam.title)}</h4>
+                                        <p class="opacity-75">${escapeHtml(exam.quiz_title || '')}</p>
+                                    </div>
+                                    <span class="badge badge-glass">UPCOMING</span>
+                                </div>
+                                
+                                <div class="flex gap-lg">
+                                    <div>
+                                        <small class="opacity-75">Starts</small>
+                                        <p><strong>${formatDateTime(exam.start_time)}</strong></p>
+                                    </div>
+                                    <div>
+                                        <small class="opacity-75">Questions</small>
+                                        <p><strong>${exam.question_count}</strong></p>
+                                    </div>
+                                    <div>
+                                        <small class="opacity-75">Duration</small>
+                                        <p><strong>${exam.duration_minutes} min</strong></p>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+            }).join('')}
+                </div>
+            `;
+        }
+
+        async function loadMyResults() {
+            try {
+                const result = await api.get('/exam/my-results');
+                const results = result.results || [];
+
+                const container = document.getElementById('my-results');
+
+                if (results.length === 0) {
+                    container.innerHTML = `
+                        <div class="text-center p-xl opacity-75">
+                            <p>No completed exams yet</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                container.innerHTML = `
+                    <div class="table-container">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Exam</th>
+                                    <th>Submitted</th>
+                                    <th>Score</th>
+                                    <th>Result</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${results.map(r => {
+                    const percentage = r.total_questions > 0 ? Math.round((r.correct_answers / r.total_questions) * 100) : 0;
+                    const passed = percentage >= 50;
+
+                    return `
+                                        <tr>
+                                            <td><strong>${escapeHtml(r.exam_title)}</strong></td>
+                                            <td>${r.submitted_at ? formatDateTime(r.submitted_at) : '-'}</td>
+                                            <td>
+                                                ${r.score !== null ? `
+                                                    <strong>${r.score}</strong> points
+                                                    <br>
+                                                    <small class="opacity-75">${r.correct_answers}/${r.total_questions} correct</small>
+                                                ` : '<span class="opacity-75">Hidden</span>'}
+                                            </td>
+                                            <td>
+                                                ${r.score !== null ? `
+                                                    <span class="badge ${passed ? 'badge-success' : 'badge-danger'}">
+                                                        ${percentage}% - ${passed ? 'PASSED' : 'FAILED'}
+                                                    </span>
+                                                ` : '-'}
+                                            </td>
+                                        </tr>
+                                    `;
+                }).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+            } catch (error) {
+                console.error('Failed to load results:', error);
+            }
+        }
+
+        function getTimeLeft(endTime) {
+            const now = new Date();
+            const diff = endTime - now;
+
+            if (diff <= 0) return 'Ended';
+
+            const hours = Math.floor(diff / (1000 * 60 * 60));
+            const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+
+            if (hours > 0) {
+                return `${hours}h ${minutes}m`;
+            }
+            return `${minutes}m`;
+        }
+
+        function formatDateTime(isoString) {
+            const date = new Date(isoString);
+            return date.toLocaleString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        init();
+    </script>
+</body>
+
+</html>

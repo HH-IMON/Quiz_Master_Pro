@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>All Quizzes - Quiz Master Pro</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Outfit:wght@700;800;900&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+
+<body>
+    <div class="animated-bg"></div>
+    <div class="particles"></div>
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <a href="/server/dashboard" class="sidebar-brand">
+            <span>🧠</span>
+            <span>Quiz Master Pro</span>
+        </a>
+
+        <div class="badge badge-danger mb-xl" style="width: 100%; justify-content: center;">
+            👑 Admin Portal
+        </div>
+
+        <nav>
+            <ul class="sidebar-nav">
+                <li class="sidebar-nav-item">
+                    <a href="/server/dashboard" class="sidebar-nav-link">
+                        <span class="icon">📊</span>
+                        <span>Dashboard</span>
+                    </a>
+                </li>
+                <li class="sidebar-nav-item">
+                    <a href="/server/admin/quizzes" class="sidebar-nav-link active">
+                        <span class="icon">📝</span>
+                        <span>All Quizzes</span>
+                    </a>
+                </li>
+                <li class="sidebar-nav-item">
+                    <a href="/server/admin/users" class="sidebar-nav-link">
+                        <span class="icon">👥</span>
+                        <span>Manage Users</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+
+        <div style="margin-top: auto;">
+            <button class="btn btn-glass w-full logout-btn">🚪 Logout</button>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <header class="flex justify-between items-center mb-xl">
+            <div>
+                <h1 class="gradient-text">All Quizzes</h1>
+                <p class="opacity-75">View and manage all quizzes on the platform</p>
+            </div>
+            <a href="/server/teacher/create-quiz" class="btn btn-primary">
+                + Create Quiz
+            </a>
+        </header>
+
+        <!-- Filters -->
+        <div class="glass-card mb-xl">
+            <div class="grid grid-4">
+                <div class="form-group" style="margin: 0;">
+                    <label class="form-label">Category</label>
+                    <select id="filter-category" class="form-input form-select" onchange="loadQuizzes()">
+                        <option value="">All Categories</option>
+                    </select>
+                </div>
+                <div class="form-group" style="margin: 0;">
+                    <label class="form-label">Difficulty</label>
+                    <select id="filter-difficulty" class="form-input form-select" onchange="loadQuizzes()">
+                        <option value="">All Difficulties</option>
+                        <option value="easy">Easy</option>
+                        <option value="medium">Medium</option>
+                        <option value="hard">Hard</option>
+                    </select>
+                </div>
+                <div class="form-group" style="margin: 0;">
+                    <label class="form-label">Search</label>
+                    <input type="text" id="search-input" class="form-input" placeholder="Search quizzes..."
+                        oninput="filterQuizzes()">
+                </div>
+                <div class="form-group" style="margin: 0; display: flex; align-items: flex-end;">
+                    <button class="btn btn-glass w-full" onclick="clearFilters()">Clear</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quizzes Table -->
+        <div class="glass-card">
+            <div class="card-header">
+                <h3 class="card-title">Quizzes</h3>
+                <span class="badge badge-glass" id="quiz-count">0 quizzes</span>
+            </div>
+
+            <div id="quizzes-list">
+                <p class="text-center opacity-75 p-xl">Loading quizzes...</p>
+            </div>
+        </div>
+    </main>
+
+    <div id="toast-container" class="toast-container"></div>
+
+    <script src="/static/js/app.js"></script>
+    <script src="/static/js/auth.js"></script>
+    <script>
+        let allQuizzes = [];
+
+        async function init() {
+            const user = await getCurrentUser();
+            if (!user || user.role !== 'admin') {
+                window.location.href = '/server/login';
+                return;
+            }
+
+            await loadCategories();
+            loadQuizzes();
+        }
+
+        async function loadCategories() {
+            try {
+                const result = await api.get('/quiz/categories');
+                const select = document.getElementById('filter-category');
+
+                result.categories.forEach(cat => {
+                    select.insertAdjacentHTML('beforeend',
+                        `<option value="${cat.id}">${cat.icon} ${escapeHtml(cat.name)}</option>`);
+                });
+            } catch (error) {
+                console.error('Failed to load categories:', error);
+            }
+        }
+
+        async function loadQuizzes() {
+            const category = document.getElementById('filter-category').value;
+            const difficulty = document.getElementById('filter-difficulty').value;
+
+            try {
+                let url = '/quiz/list?active_only=false&';
+                if (category) url += `category_id=${category}&`;
+                if (difficulty) url += `difficulty=${difficulty}&`;
+
+                const result = await api.get(url);
+                allQuizzes = result.quizzes || [];
+
+                document.getElementById('quiz-count').textContent = `${allQuizzes.length} quizzes`;
+                renderQuizzes(allQuizzes);
+            } catch (error) {
+                showToast('Failed to load quizzes', 'error');
+            }
+        }
+
+        function renderQuizzes(quizzes) {
+            const container = document.getElementById('quizzes-list');
+
+            if (quizzes.length === 0) {
+                container.innerHTML = '<p class="text-center opacity-75 p-xl">No quizzes found</p>';
+                return;
+            }
+
+            container.innerHTML = `
+                <div class="table-container">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Quiz</th>
+                                <th>Created By</th>
+                                <th>Category</th>
+                                <th>Questions</th>
+                                <th>Difficulty</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${quizzes.map(quiz => `
+                                <tr>
+                                    <td>
+                                        <strong>${escapeHtml(quiz.title)}</strong>
+                                        ${quiz.description ? `<p class="opacity-75" style="font-size: 0.75rem;">${escapeHtml(quiz.description.substring(0, 50))}...</p>` : ''}
+                                    </td>
+                                    <td>${escapeHtml(quiz.creator_name || 'Unknown')}</td>
+                                    <td>
+                                        <span>${quiz.category_icon || '📚'} ${escapeHtml(quiz.category_name || 'Uncategorized')}</span>
+                                    </td>
+                                    <td>${quiz.question_count || 0}</td>
+                                    <td>
+                                        <span class="badge badge-${quiz.difficulty === 'easy' ? 'success' : quiz.difficulty === 'hard' ? 'danger' : 'warning'}">
+                                            ${quiz.difficulty}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge ${quiz.is_active ? 'badge-success' : 'badge-danger'}">
+                                            ${quiz.is_active ? 'Active' : 'Inactive'}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="flex gap-sm">
+                                            <a href="/server/teacher/create-quiz?edit=${quiz.id}" class="btn btn-glass btn-sm">Edit</a>
+                                            <button class="btn btn-${quiz.is_active ? 'warning' : 'success'} btn-sm" onclick="toggleStatus(${quiz.id}, ${quiz.is_active})">
+                                                ${quiz.is_active ? 'Disable' : 'Enable'}
+                                            </button>
+                                            <button class="btn btn-danger btn-sm" onclick="deleteQuiz(${quiz.id})">Delete</button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        }
+
+        function filterQuizzes() {
+            const search = document.getElementById('search-input').value.toLowerCase();
+            const filtered = allQuizzes.filter(q =>
+                q.title.toLowerCase().includes(search) ||
+                (q.description && q.description.toLowerCase().includes(search))
+            );
+            renderQuizzes(filtered);
+        }
+
+        function clearFilters() {
+            document.getElementById('filter-category').value = '';
+            document.getElementById('filter-difficulty').value = '';
+            document.getElementById('search-input').value = '';
+            loadQuizzes();
+        }
+
+        async function toggleStatus(quizId, currentStatus) {
+            try {
+                await api.put(`/quiz/update/${quizId}`, { is_active: !currentStatus });
+                showToast('Quiz status updated', 'success');
+                loadQuizzes();
+            } catch (error) {
+                showToast('Failed to update status', 'error');
+            }
+        }
+
+        async function deleteQuiz(quizId) {
+            if (!confirm('Delete this quiz? All questions will also be deleted.')) return;
+
+            try {
+                await api.delete(`/quiz/delete/${quizId}`);
+                showToast('Quiz deleted', 'success');
+                loadQuizzes();
+            } catch (error) {
+                showToast(error.message || 'Failed to delete quiz', 'error');
+            }
+        }
+
+        init();
+    </script>
+</body>
+
+</html>

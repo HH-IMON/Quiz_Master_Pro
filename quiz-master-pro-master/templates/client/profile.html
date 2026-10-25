@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile - Quiz Master Pro</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Outfit:wght@700;800;900&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+
+<body>
+    <div class="animated-bg"></div>
+    <div class="particles"></div>
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <a href="/client/home" class="sidebar-brand">
+            <span>🧠</span>
+            <span>Quiz Master Pro</span>
+        </a>
+
+        <nav>
+            <ul class="sidebar-nav">
+                <li class="sidebar-nav-item">
+                    <a href="/client/home" class="sidebar-nav-link">
+                        <span class="icon">🏠</span>
+                        <span>Home</span>
+                    </a>
+                </li>
+                <li class="sidebar-nav-item">
+                    <a href="/client/game" class="sidebar-nav-link">
+                        <span class="icon">🎮</span>
+                        <span>Join Game</span>
+                    </a>
+                </li>
+                <li class="sidebar-nav-item">
+                    <a href="/client/practice" class="sidebar-nav-link">
+                        <span class="icon">📚</span>
+                        <span>Practice</span>
+                    </a>
+                </li>
+                <li class="sidebar-nav-item">
+                    <a href="/client/profile" class="sidebar-nav-link active">
+                        <span class="icon">👤</span>
+                        <span>Profile</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+
+        <div style="margin-top: auto; padding-top: var(--spacing-xl);">
+            <button class="btn btn-glass w-full logout-btn">🚪 Logout</button>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <header class="mb-xl">
+            <h1 class="gradient-text">My Profile</h1>
+        </header>
+
+        <!-- Profile Card -->
+        <div class="grid grid-3 mb-xl">
+            <div class="glass-card text-center" style="grid-column: span 1;">
+                <div class="avatar avatar-xl" id="profile-avatar" style="margin: 0 auto; font-size: 4rem;">😀</div>
+                <h2 class="mt-lg" id="profile-username">Username</h2>
+                <p class="opacity-75" id="profile-email">email@example.com</p>
+
+                <div class="level-badge mt-lg" style="display: inline-flex;">
+                    <span class="badge-icon" id="profile-badge">🌱</span>
+                    <span id="profile-level-name">Beginner</span>
+                </div>
+
+                <p class="mt-md opacity-75">Level <span id="profile-level">1</span></p>
+
+                <button class="btn btn-glass mt-lg" onclick="showModal('avatar-modal')">
+                    Change Avatar
+                </button>
+            </div>
+
+            <!-- Stats -->
+            <div class="glass-card" style="grid-column: span 2;">
+                <h3 class="mb-lg">Statistics</h3>
+
+                <div class="grid grid-4 mb-xl">
+                    <div class="stat-card glass">
+                        <div class="stat-value" id="stat-xp">0</div>
+                        <div class="stat-label">XP Points</div>
+                    </div>
+                    <div class="stat-card glass">
+                        <div class="stat-value" id="stat-quizzes">0</div>
+                        <div class="stat-label">Quizzes</div>
+                    </div>
+                    <div class="stat-card glass">
+                        <div class="stat-value" id="stat-battles">0</div>
+                        <div class="stat-label">Battle Wins</div>
+                    </div>
+                    <div class="stat-card glass">
+                        <div class="stat-value" id="stat-accuracy">0%</div>
+                        <div class="stat-label">Accuracy</div>
+                    </div>
+                </div>
+
+                <h4 class="mb-md">Level Progress</h4>
+                <div class="progress mb-sm" style="height: 12px;">
+                    <div class="progress-bar" id="xp-progress" style="width: 0%"></div>
+                </div>
+                <div class="flex justify-between opacity-75" style="font-size: 0.875rem;">
+                    <span id="xp-current">0 XP</span>
+                    <span id="xp-next">100 XP to next level</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Achievements -->
+        <div class="glass-card mb-xl">
+            <h3 class="mb-lg">🏆 Achievements</h3>
+            <div class="grid grid-4" id="achievements-grid">
+                <div class="text-center p-lg glass" style="border-radius: var(--radius-lg);">
+                    <div style="font-size: 2.5rem;">🎯</div>
+                    <h5 class="mt-sm">First Quiz</h5>
+                    <p class="opacity-50" style="font-size: 0.75rem;">Complete your first quiz</p>
+                </div>
+                <div class="text-center p-lg glass" style="border-radius: var(--radius-lg);">
+                    <div style="font-size: 2.5rem;">⚔️</div>
+                    <h5 class="mt-sm">Battle Ready</h5>
+                    <p class="opacity-50" style="font-size: 0.75rem;">Win your first battle</p>
+                </div>
+                <div class="text-center p-lg glass" style="border-radius: var(--radius-lg); opacity: 0.4;">
+                    <div style="font-size: 2.5rem;">🔥</div>
+                    <h5 class="mt-sm">On Fire</h5>
+                    <p class="opacity-50" style="font-size: 0.75rem;">Get 5 correct in a row</p>
+                </div>
+                <div class="text-center p-lg glass" style="border-radius: var(--radius-lg); opacity: 0.4;">
+                    <div style="font-size: 2.5rem;">👑</div>
+                    <h5 class="mt-sm">Quiz Master</h5>
+                    <p class="opacity-50" style="font-size: 0.75rem;">Reach level 5</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Practice Progress -->
+        <div class="glass-card">
+            <h3 class="mb-lg">📊 Practice Progress</h3>
+            <div id="practice-progress">
+                <!-- Loaded dynamically -->
+            </div>
+        </div>
+    </main>
+
+    <!-- Avatar Modal -->
+    <div class="modal-overlay" id="avatar-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title">Choose Avatar</h3>
+                <button class="modal-close" onclick="hideModal('avatar-modal')">×</button>
+            </div>
+            <div class="avatar-grid"
+                style="display: grid; grid-template-columns: repeat(5, 1fr); gap: var(--spacing-md);">
+                <!-- Avatars loaded by JS -->
+            </div>
+        </div>
+    </div>
+
+    <div id="toast-container" class="toast-container"></div>
+
+    <script src="/static/js/app.js"></script>
+    <script src="/static/js/auth.js"></script>
+    <script>
+        async function init() {
+            const user = await getCurrentUser();
+            if (!user) {
+                window.location.href = '/client/login';
+                return;
+            }
+
+            // Update profile info
+            document.getElementById('profile-username').textContent = user.username;
+            document.getElementById('profile-email').textContent = user.email;
+            document.getElementById('profile-avatar').textContent = getAvatarEmoji(user.avatar);
+            document.getElementById('profile-badge').textContent = user.rank_badge;
+            document.getElementById('profile-level').textContent = user.level;
+            document.getElementById('profile-level-name').textContent = getLevelInfo(user.xp_points).name;
+            document.getElementById('stat-xp').textContent = user.xp_points;
+
+            // XP Progress
+            const progress = getXPProgress(user.xp_points);
+            document.getElementById('xp-progress').style.width = `${progress.progress}%`;
+            document.getElementById('xp-current').textContent = `${progress.current} XP`;
+            document.getElementById('xp-next').textContent = `${progress.required - progress.current} XP to next level`;
+
+            // Load other stats
+            loadPracticeProgress();
+            loadBattleStats();
+            initAvatarGrid();
+        }
+
+        async function loadPracticeProgress() {
+            try {
+                const result = await api.get('/practice/progress');
+                const container = document.getElementById('practice-progress');
+
+                if (result.success && result.progress.length > 0) {
+                    container.innerHTML = `
+                        <div class="grid grid-2">
+                            ${result.progress.map(p => `
+                                <div class="flex items-center gap-lg p-md glass" style="border-radius: var(--radius-md);">
+                                    <span style="font-size: 2rem;">${p.category_icon}</span>
+                                    <div class="flex-1">
+                                        <div class="flex justify-between mb-sm">
+                                            <span>${escapeHtml(p.category_name)}</span>
+                                            <span>${p.correct_answers}/${p.questions_attempted}</span>
+                                        </div>
+                                        <div class="progress" style="height: 6px;">
+                                            <div class="progress-bar" style="width: ${p.questions_attempted > 0 ? (p.correct_answers / p.questions_attempted * 100) : 0}%"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                        <div class="mt-lg text-center">
+                            <p class="opacity-75">Overall Accuracy: ${result.summary.overall_accuracy}%</p>
+                        </div>
+                    `;
+
+                    document.getElementById('stat-accuracy').textContent = `${result.summary.overall_accuracy}%`;
+                } else {
+                    container.innerHTML = '<p class="text-center opacity-75">Start practicing to see your progress!</p>';
+                }
+            } catch (error) {
+                console.error('Failed to load progress:', error);
+            }
+        }
+
+        async function loadBattleStats() {
+            try {
+                const result = await api.get('/battle/stats');
+                if (result.success) {
+                    document.getElementById('stat-battles').textContent = result.stats.wins || 0;
+                }
+            } catch (error) {
+                console.error('Failed to load battle stats:', error);
+            }
+        }
+
+        function initAvatarGrid() {
+            const grid = document.querySelector('#avatar-modal .avatar-grid');
+            const avatars = [
+                'avatar1', 'avatar2', 'avatar3', 'avatar4', 'avatar5',
+                'avatar6', 'avatar7', 'avatar8', 'avatar9', 'avatar10'
+            ];
+
+            grid.innerHTML = avatars.map(av => `
+                <div class="avatar cursor-pointer" onclick="selectAvatar('${av}')" 
+                     style="width: 60px; height: 60px; font-size: 2rem;">
+                    ${getAvatarEmoji(av)}
+                </div>
+            `).join('');
+        }
+
+        async function selectAvatar(avatar) {
+            try {
+                await api.put('/auth/update-profile', { avatar });
+                document.getElementById('profile-avatar').textContent = getAvatarEmoji(avatar);
+                hideModal('avatar-modal');
+                showToast('Avatar updated!', 'success');
+            } catch (error) {
+                showToast('Failed to update avatar', 'error');
+            }
+        }
+
+        init();
+    </script>
+</body>
+
+</html>

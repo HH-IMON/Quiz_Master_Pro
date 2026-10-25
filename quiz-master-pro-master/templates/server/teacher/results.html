@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game Results - Quiz Master Pro</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Outfit:wght@700;800;900&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+
+<body>
+    <div class="animated-bg"></div>
+    <div class="particles"></div>
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <a href="/server/dashboard" class="sidebar-brand">
+            <span>🧠</span>
+            <span>Quiz Master Pro</span>
+        </a>
+
+        <div class="badge badge-primary mb-xl" style="width: 100%; justify-content: center;">
+            🖥️ Server Portal
+        </div>
+
+        <nav>
+            <ul class="sidebar-nav">
+                <li class="sidebar-nav-item">
+                    <a href="/server/dashboard" class="sidebar-nav-link">
+                        <span class="icon">📊</span>
+                        <span>Dashboard</span>
+                    </a>
+                </li>
+                <li class="sidebar-nav-item">
+                    <a href="/server/teacher/create-quiz" class="sidebar-nav-link">
+                        <span class="icon">➕</span>
+                        <span>Create Quiz</span>
+                    </a>
+                </li>
+                <li class="sidebar-nav-item">
+                    <a href="/server/teacher/host-game" class="sidebar-nav-link">
+                        <span class="icon">🎮</span>
+                        <span>Host Game</span>
+                    </a>
+                </li>
+                <li class="sidebar-nav-item">
+                    <a href="/server/teacher/results" class="sidebar-nav-link active">
+                        <span class="icon">📈</span>
+                        <span>Results</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+
+        <div style="margin-top: auto;">
+            <button class="btn btn-glass w-full logout-btn">🚪 Logout</button>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <header class="mb-xl">
+            <h1 class="gradient-text">📈 Game Results</h1>
+            <p class="opacity-75">View results from your hosted games</p>
+        </header>
+
+        <!-- Summary Stats -->
+        <div class="grid grid-4 mb-xl">
+            <div class="glass-card stat-card">
+                <div class="stat-value" id="stat-total-games">0</div>
+                <div class="stat-label">Games Hosted</div>
+            </div>
+            <div class="glass-card stat-card">
+                <div class="stat-value" id="stat-total-players">0</div>
+                <div class="stat-label">Total Players</div>
+            </div>
+            <div class="glass-card stat-card">
+                <div class="stat-value" id="stat-avg-score">0%</div>
+                <div class="stat-label">Avg Accuracy</div>
+            </div>
+            <div class="glass-card stat-card">
+                <div class="stat-value" id="stat-completion">0%</div>
+                <div class="stat-label">Completion Rate</div>
+            </div>
+        </div>
+
+        <!-- Game History -->
+        <div class="glass-card">
+            <div class="card-header">
+                <h3 class="card-title">Game History</h3>
+            </div>
+
+            <div id="games-list">
+                <p class="text-center opacity-75 p-xl">Loading game history...</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- Game Details Modal -->
+    <div class="modal-overlay" id="game-details-modal">
+        <div class="modal" style="max-width: 700px;">
+            <div class="modal-header">
+                <h3 class="modal-title">Game Details</h3>
+                <button class="modal-close" onclick="hideModal('game-details-modal')">×</button>
+            </div>
+
+            <div id="game-details-content">
+                <!-- Game details loaded dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <div id="toast-container" class="toast-container"></div>
+
+    <script src="/static/js/app.js"></script>
+    <script src="/static/js/auth.js"></script>
+    <script>
+        async function init() {
+            const user = await getCurrentUser();
+            if (!user || !['teacher', 'admin'].includes(user.role)) {
+                window.location.href = '/server/login';
+                return;
+            }
+
+            loadGameHistory();
+        }
+
+        async function loadGameHistory() {
+            try {
+                const result = await api.get('/game/my-rooms');
+                const games = result.rooms || [];
+
+                // Update stats
+                document.getElementById('stat-total-games').textContent = games.length;
+
+                let totalPlayers = 0;
+                games.forEach(g => totalPlayers += g.participant_count || 0);
+                document.getElementById('stat-total-players').textContent = totalPlayers;
+
+                renderGames(games);
+            } catch (error) {
+                showToast('Failed to load game history', 'error');
+            }
+        }
+
+        function renderGames(games) {
+            const container = document.getElementById('games-list');
+
+            if (games.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center p-xl">
+                        <div style="font-size: 4rem;">🎮</div>
+                        <h4 class="mt-lg">No Games Yet</h4>
+                        <p class="opacity-75 mt-sm">Host your first game to see results here!</p>
+                        <a href="/server/teacher/host-game" class="btn btn-primary mt-lg">Host a Game</a>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = `
+                <div class="table-container">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Room Code</th>
+                                <th>Quiz</th>
+                                <th>Players</th>
+                                <th>Status</th>
+                                <th>Date</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${games.map(game => `
+                                <tr>
+                                    <td>
+                                        <span class="badge badge-primary">${game.room_code}</span>
+                                    </td>
+                                    <td>${escapeHtml(game.quiz_title || 'Untitled Quiz')}</td>
+                                    <td>${game.participant_count || 0}</td>
+                                    <td>
+                                        <span class="badge badge-${game.status === 'active' ? 'success' : game.status === 'completed' ? 'glass' : 'warning'}">
+                                            ${game.status || 'waiting'}
+                                        </span>
+                                    </td>
+                                    <td>${formatDateTime(game.created_at)}</td>
+                                    <td>
+                                        <button class="btn btn-glass btn-sm" onclick="viewGameDetails('${game.room_code}')">
+                                            View Details
+                                        </button>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        }
+
+        async function viewGameDetails(roomCode) {
+            try {
+                const result = await api.get(`/game/leaderboard/${roomCode}`);
+                const leaderboard = result.leaderboard || [];
+
+                const content = document.getElementById('game-details-content');
+
+                content.innerHTML = `
+                    <div class="text-center mb-lg">
+                        <span class="badge badge-primary" style="font-size: 1.5rem; padding: var(--spacing-md) var(--spacing-lg);">
+                            ${roomCode}
+                        </span>
+                    </div>
+                    
+                    ${leaderboard.length > 0 ? `
+                        <h4 class="mb-md">🏆 Final Leaderboard</h4>
+                        <ul class="leaderboard-list" style="list-style: none; padding: 0;">
+                            ${leaderboard.map((player, i) => `
+                                <li class="flex items-center gap-md p-md" style="border-bottom: 1px solid rgba(255,255,255,0.1);">
+                                    <span class="badge ${i === 0 ? 'badge-warning' : i === 1 ? 'badge-glass' : i === 2 ? 'badge-secondary' : 'badge-glass'}">
+                                        ${i < 3 ? ['🥇', '🥈', '🥉'][i] : `#${i + 1}`}
+                                    </span>
+                                    <div class="avatar avatar-sm">${getAvatarEmoji(player.avatar)}</div>
+                                    <span class="flex-1">${escapeHtml(player.username)}</span>
+                                    <span class="font-bold">${player.score} pts</span>
+                                </li>
+                            `).join('')}
+                        </ul>
+                    ` : `
+                        <p class="text-center opacity-75 p-lg">No participants data available</p>
+                    `}
+                `;
+
+                showModal('game-details-modal');
+            } catch (error) {
+                showToast('Failed to load game details', 'error');
+            }
+        }
+
+        init();
+    </script>
+</body>
+
+</html>
